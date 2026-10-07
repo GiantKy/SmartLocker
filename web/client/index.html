@@ -1,0 +1,270 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="utf-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0,
+        maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    >
+
+    <meta name="shell-type" content="mobile_tab">
+
+    <title>Trang Chủ | EXPRESS</title>
+
+    <!-- Google Fonts: Be Vietnam Pro -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <!-- Google Material Symbols -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700&display=swap"
+        rel="stylesheet"
+    >
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Tailwind Configuration & Main JS -->
+    <script src="assets/js/main.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+
+<body
+    class="bg-background font-body-md text-on-surface
+    antialiased flex flex-col min-h-screen"
+>
+
+    <!-- ================= MAIN ================= -->
+    <main
+        class="flex-1 flex flex-col relative w-full
+        pt-safe bg-background min-h-screen"
+    >
+
+        <div
+            class="flex-1 flex flex-col justify-center
+            px-margin py-8 gap-5
+            max-w-md mx-auto w-full"
+        >
+
+            <!-- Logo & Tiêu đề phụ -->
+            <div class="text-center mb-2">
+
+                <img
+                    src="assets/images/logo.png"
+                    alt="guinhando.xyz Logo"
+                    class="h-28 w-auto mx-auto object-contain mb-3"
+                >
+
+                <p
+                    class="font-body-sm
+                    text-on-surface-variant mt-1"
+                >
+                    Chọn phương thức bạn muốn thực hiện
+                </p>
+
+            </div>
+
+
+            <!-- ================= SERVICE BUTTONS ================= -->
+            <div class="grid grid-cols-1 gap-4 w-full">
+
+                <!-- NÚT GỬI HÀNG -->
+                <button
+                    type="button"
+                    id="btn-go-send"
+                    class="group relative overflow-hidden
+                    rounded-2xl
+                    bg-gradient-to-r
+                    from-secondary-container to-secondary
+                    p-5 text-left shadow-lg
+                    transition-transform
+                    active:scale-[0.98]
+                    w-full flex items-center
+                    justify-between gap-3"
+                >
+
+                    <!-- Hiệu ứng nền -->
+                    <div
+                        class="absolute -right-4 -bottom-6
+                        w-32 h-32 rounded-full
+                        bg-surface-container-lowest/15
+                        blur-xl pointer-events-none"
+                    ></div>
+
+                    <!-- Nội dung nút -->
+                    <div
+                        class="relative z-10 flex items-center
+                        gap-4 min-w-0"
+                    >
+
+                        <!-- Icon -->
+                        <div
+                            class="w-16 h-16 rounded-2xl
+                            bg-surface-container-lowest/20
+                            backdrop-blur-md
+                            flex items-center justify-center
+                            text-on-secondary shrink-0
+                            shadow-inner
+                            group-hover:scale-105
+                            transition-transform"
+                        >
+
+                            <span
+                                class="material-symbols-outlined
+                                text-[36px]"
+                            >
+                                outbox
+                            </span>
+
+                        </div>
+
+                        <!-- Text -->
+                        <div class="flex items-center min-w-0">
+                            <span
+                                class="font-headline-lg-mobile
+                                text-headline-lg-mobile
+                                text-on-secondary
+                                font-bold tracking-tight"
+                            >
+                                GỬI HÀNG
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Mũi tên -->
+                    <div
+                        class="w-11 h-11 rounded-full
+                        bg-surface-container-lowest/25
+                        flex items-center justify-center
+                        text-on-secondary shrink-0
+                        group-hover:translate-x-1
+                        transition-transform"
+                    >
+
+                        <span
+                            class="material-symbols-outlined text-[24px]"
+                        >
+                            arrow_forward
+                        </span>
+
+                    </div>
+
+                </button>
+
+
+                <!-- NÚT NHẬN HÀNG -->
+                <button
+                    type="button"
+                    id="btn-go-receive"
+                    class="group relative overflow-hidden
+                    rounded-2xl
+                    bg-gradient-to-r
+                    from-primary-container to-primary
+                    p-5 text-left shadow-lg
+                    transition-transform
+                    active:scale-[0.98]
+                    w-full flex items-center
+                    justify-between gap-3"
+                >
+
+                    <!-- Hiệu ứng nền -->
+                    <div
+                        class="absolute -right-4 -top-6
+                        w-32 h-32 rounded-full
+                        bg-tertiary-fixed/10
+                        blur-xl pointer-events-none"
+                    ></div>
+
+                    <!-- Nội dung nút -->
+                    <div
+                        class="relative z-10 flex items-center
+                        gap-4 min-w-0"
+                    >
+
+                        <!-- Icon -->
+                        <div
+                            class="w-16 h-16 rounded-2xl
+                            bg-surface-container-lowest/15
+                            backdrop-blur-md
+                            flex items-center justify-center
+                            text-on-primary shrink-0
+                            shadow-inner
+                            group-hover:scale-105
+                            transition-transform"
+                        >
+
+                            <span
+                                class="material-symbols-outlined
+                                text-[36px]"
+                            >
+                                move_to_inbox
+                            </span>
+
+                        </div>
+
+                        <!-- Text -->
+                        <div class="flex items-center min-w-0">
+                            <span
+                                class="font-headline-lg-mobile
+                                text-headline-lg-mobile
+                                text-on-primary
+                                font-bold tracking-tight"
+                            >
+                                NHẬN HÀNG
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Mũi tên -->
+                    <div
+                        class="w-11 h-11 rounded-full
+                        bg-surface-container-lowest/15
+                        flex items-center justify-center
+                        text-on-primary shrink-0
+                        group-hover:translate-x-1
+                        transition-transform"
+                    >
+
+                        <span
+                            class="material-symbols-outlined text-[24px]"
+                        >
+                            arrow_forward
+                        </span>
+
+                    </div>
+
+                </button>
+
+            </div>
+
+            <!-- ================= NÚT HƯỚNG DẪN SỬ DỤNG ================= -->
+            <div class="flex justify-center mt-2">
+                <button
+                    type="button"
+                    id="btn-user-guide"
+                    class="inline-flex items-center gap-2 px-4 py-2.5
+                    rounded-full bg-surface-container
+                    hover:bg-surface-container-high
+                    text-primary font-label-md text-label-md
+                    transition-all active:scale-95 shadow-sm"
+                >
+                    <span class="material-symbols-outlined text-[18px] text-secondary-container">
+                        menu_book
+                    </span>
+                    <span>Hướng dẫn sử dụng</span>
+                </button>
+            </div>
+
+        </div>
+    </main>
+
+</body>
+</html>

@@ -1,0 +1,97 @@
+SmartLocker/
+│
+├── server/                                  # Backend Node.js: nhận request, xử lý nghiệp vụ,
+│                                            # kết nối DB, WebSocket và giao tiếp với AI
+│   ├── src/
+│   │   │
+│   │   ├── config/                          # Cấu hình hệ thống
+│   │   │   ├── database.js                  # Tạo/kết nối MySQL, tạo connection pool
+│   │   │   ├── env.js                       # Đọc và kiểm tra các biến môi trường từ .env
+│   │   │   └── constants.js                 # Chứa các giá trị cố định dùng chung
+│   │   │                                      # VD: trạng thái đơn, loại thiết bị, mã lỗi...
+│   │   │
+│   │   ├── controllers/                     # Nhận request và trả response
+│   │   │   ├── auth.controller.js           # Xử lý request đăng nhập/xác thực người dùng
+│   │   │   ├── locker.controller.js         # Xử lý request liên quan đến tủ
+│   │   │   ├── order.controller.js          # Xử lý request tạo/quản lý đơn hàng
+│   │   │   ├── payment.controller.js        # Xử lý request thanh toán
+│   │   │   └── ekyc.controller.js            # Xử lý request liên quan đến eKYC
+│   │   │
+│   │   ├── services/                        # Chứa LOGIC NGHIỆP VỤ chính
+│   │   │   ├── auth.service.js              # Logic đăng nhập, tạo token, xác thực user...
+│   │   │   ├── locker.service.js            # Logic mở/đóng tủ, kiểm tra tủ trống...
+│   │   │   ├── order.service.js             # Logic tạo đơn, cập nhật trạng thái đơn...
+│   │   │   ├── payment.service.js           # Logic kiểm tra/xử lý thanh toán
+│   │   │   └── ekyc.service.js              # Logic xử lý quy trình eKYC và gọi AI
+│   │   │
+│   │   ├── routes/                          # Định nghĩa API URL và nối URL với controller
+│   │   │   ├── auth.routes.js               # VD: POST /api/auth/login
+│   │   │   ├── locker.routes.js             # VD: GET /api/lockers, POST /api/lockers/open
+│   │   │   ├── order.routes.js              # VD: POST /api/orders, GET /api/orders/:id
+│   │   │   ├── payment.routes.js            # VD: POST /api/payments
+│   │   │   └── ekyc.routes.js               # VD: POST /api/ekyc/start
+│   │   │
+│   │   ├── websocket/                       # Giao tiếp thời gian thực
+│   │   │   ├── ws.server.js                 # Tạo và quản lý WebSocket Server
+│   │   │   ├── client.manager.js            # Quản lý các client đang kết nối
+│   │   │                                      # VD: FE, ESP32, AI service...
+│   │   │   └── events.js                    # Khai báo/xử lý các loại sự kiện WebSocket
+│   │   │                                      # VD: FACE_VERIFIED, OPEN_LOCKER...
+│   │   │
+│   │   ├── middleware/                      # Các lớp trung gian chạy TRƯỚC controller
+│   │   │   ├── auth.middleware.js            # Kiểm tra user có đăng nhập/token hợp lệ không
+│   │   │   ├── device.middleware.js         # Kiểm tra thiết bị có hợp lệ không
+│   │   │   ├── error.middleware.js          # Bắt và xử lý lỗi từ các middleware/controller
+│   │   │   └── request.middleware.js        # Xử lý chung cho request
+│   │   │                                      # VD: log request, tạo request ID...
+│   │   │
+│   │   ├── models/                          # Tầng làm việc với dữ liệu/database
+│   │   │   ├── user.model.js                # Truy vấn bảng users
+│   │   │   ├── locker.model.js              # Truy vấn bảng lockers
+│   │   │   ├── order.model.js               # Truy vấn bảng orders
+│   │   │   └── device.model.js              # Truy vấn bảng devices
+│   │   │
+│   │   ├── utils/                           # Các hàm tiện ích dùng chung
+│   │   │   ├── logger.js                    # Ghi log hệ thống
+│   │   │   ├── crypto.js                    # Hash/mã hóa/giải mã/chữ ký nếu cần
+│   │   │   └── response.js                  # Chuẩn hóa format response trả về client
+│   │   │
+│   │   └── app.js                            # Tạo Express app, đăng ký middleware,
+│   │                                            # routes, error handler...
+│   │
+│   ├── .env                                 # Biến môi trường: DB_USER, DB_PASSWORD,
+│   │                                        # JWT_SECRET, PORT... KHÔNG commit lên Git
+│   │
+│   ├── package.json                         # Thông tin project + danh sách npm package
+│   │                                        # + scripts chạy server
+│   │
+│   └── server.js                            # ENTRY POINT: khởi động server
+│                                            # VD: app.listen(PORT)
+│
+├── ai/                                      # Python AI Service
+│   │                                        # Chạy riêng với Node.js Backend
+│   ├── detection/                           # Phát hiện khuôn mặt/người trong ảnh
+│   ├── quality/                             # Kiểm tra chất lượng ảnh khuôn mặt
+│   ├── liveness/                            # Kiểm tra người thật/chống giả mạo
+│   ├── recognition/                         # Nhận diện/xác định danh tính khuôn mặt
+│   ├── verification/                        # So sánh khuôn mặt với dữ liệu đã đăng ký
+│   ├── ekyc/                                # Điều phối toàn bộ pipeline eKYC
+│   ├── models/                              # Lưu model AI
+│   │                                        # VD: .pt, .pth, .onnx...
+│   ├── api.py                               # API Python để Node.js gọi AI
+│   └── requirements.txt                     # Danh sách thư viện Python cần cài
+│
+├── public/                                  # Frontend
+│   │                                        # Nếu Node.js trực tiếp phục vụ giao diện
+│   ├── index.html                           # Trang chính: chọn Gửi / Nhận
+│   ├── send.html                            # Giao diện gửi hàng
+│   ├── receive.html                         # Giao diện nhận hàng
+│   └── assets/                              # CSS, JavaScript, hình ảnh, icon...
+│
+├── uploads/                                 # File người dùng/thiết bị upload lên server
+│   ├── ekyc/                                # Ảnh/video phục vụ eKYC
+│   ├── package/                             # Ảnh/video liên quan đến kiện hàng
+│   └── temp/                                # File tạm trong quá trình xử lý
+│
+└── README.md                                # Tài liệu mô tả project, cách cài đặt,
+                                             # cách chạy, API, cấu trúc hệ thống...

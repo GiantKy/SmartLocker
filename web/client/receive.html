@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="utf-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0,
+        maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    >
+
+    <meta name="shell-type" content="mobile_tab">
+
+    <title>Thông Tin Nhận Hàng | EXPRESS</title>
+
+    <!-- Google Fonts: Be Vietnam Pro -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <!-- Google Material Symbols -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700&display=swap"
+        rel="stylesheet"
+    >
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Tailwind Configuration & Main JS -->
+    <script src="assets/js/main.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+
+<body
+    class="bg-background font-body-md text-on-surface
+    antialiased flex flex-col min-h-screen"
+>
+
+    <!-- ================= MAIN ================= -->
+    <main
+        class="flex-1 flex flex-col relative w-full
+        pt-safe pb-safe bg-background min-h-screen"
+    >
+
+        <!-- Thanh trên cùng với nút Hủy giao dịch bên tay trái -->
+        <div class="w-full max-w-md mx-auto px-margin pt-4 pb-2 flex items-center justify-between">
+            <button
+                type="button"
+                id="btn-cancel-transaction"
+                class="inline-flex items-center gap-1.5 px-3.5 py-2
+                rounded-xl bg-error-container/70 hover:bg-error-container
+                text-on-error-container font-label-md text-label-md font-semibold
+                transition-all active:scale-95 shadow-sm"
+            >
+                <span class="material-symbols-outlined text-[18px]">
+                    close
+                </span>
+                <span>Hủy giao dịch</span>
+            </button>
+        </div>
+
+        <!-- Nội dung Form nhập thông tin nhận hàng -->
+        <div
+            class="flex-1 flex flex-col justify-center
+            px-margin py-4 gap-5
+            max-w-md mx-auto w-full"
+        >
+
+            <!-- Tiêu đề trang -->
+            <div class="text-center">
+                <h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary font-bold tracking-tight">
+                    Thông Tin Nhận Hàng
+                </h1>
+                <p class="font-body-sm text-on-surface-variant mt-1">
+                    Nhập số điện thoại người nhận để tra cứu và nhận kiện hàng
+                </p>
+            </div>
+
+            <!-- Form -->
+            <form id="receive-order-form" class="space-y-4" novalidate>
+
+                <!-- Khối SĐT Người Nhận -->
+                <div class="p-5 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/40 space-y-4">
+                    <div class="flex items-center gap-2 text-primary font-bold">
+                        <div class="w-9 h-9 rounded-xl bg-primary-fixed flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[20px]">move_to_inbox</span>
+                        </div>
+                        <span class="text-label-lg uppercase tracking-wide">Thông tin người nhận</span>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label for="receive-phone" class="block font-label-md text-label-md text-primary">
+                            SĐT người nhận <span class="text-error">*</span>
+                        </label>
+                        <div class="relative flex items-center">
+                            <span class="material-symbols-outlined text-[20px] text-outline absolute left-3.5 pointer-events-none">
+                                call
+                            </span>
+                            <input
+                                type="tel"
+                                id="receive-phone"
+                                name="receivePhone"
+                                required
+                                inputmode="tel"
+                                placeholder="Nhập số điện thoại người nhận"
+                                class="w-full pl-10 pr-4 py-3.5 rounded-xl bg-surface-container/60 border border-outline-variant/60 focus:border-primary focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline transition"
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nút Xác Nhận bên dưới -->
+                <div class="pt-2">
+                    <button
+                        type="submit"
+                        id="btn-confirm-receive"
+                        class="w-full py-4 px-6 rounded-2xl
+                        bg-gradient-to-r from-primary-container to-primary
+                        text-on-primary font-headline-sm text-headline-sm font-bold
+                        shadow-lg hover:opacity-95 active:scale-[0.98]
+                        transition-all flex items-center justify-center gap-2"
+                    >
+                        <span class="material-symbols-outlined text-[22px]">
+                            check_circle
+                        </span>
+                        <span>Xác nhận</span>
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </main>
+
+</body>
+</html>

@@ -1,0 +1,62 @@
+# ==============================================================================
+# Root .gitignore for NCKH Smart Locker Project
+# ==============================================================================
+
+# Node.js Dependencies
+node_modules/
+**/node_modules/
+package-lock.json
+
+# Python Virtual Environments & Bytecode
+.venv/
+**/.venv/
+venv/
+**/venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# PlatformIO & Embedded Builds
+.pio/
+**/.pio/
+.pioenvs/
+.piolibdeps/
+.clang_complete
+.gcc-flags.json
+build/
+**/build/
+dist/
+**/dist/
+
+# Environment Variables & Local Configs
+.env
+**/.env
+.env.local
+.env.*.local
+
+# Logs & Runtime Output
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Uploads & Runtime Session Storage
+uploads/
+**/uploads/
+web/server/uploads/
+web/server/uploads/**
+temp/
+**/temp/
+tmp/
+**/tmp/
+
+# IDE & OS Cache
+.vscode/
+**/.vscode/
+.idea/
+**/.idea/
+.DS_Store
+Thumbs.db

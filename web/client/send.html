@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="utf-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0,
+        maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    >
+
+    <meta name="shell-type" content="mobile_tab">
+
+    <title>Thông Tin Giao Dịch | EXPRESS</title>
+
+    <!-- Google Fonts: Be Vietnam Pro -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <!-- Google Material Symbols -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700&display=swap"
+        rel="stylesheet"
+    >
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Tailwind Configuration & Main JS -->
+    <script src="assets/js/main.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+
+<body
+    class="bg-background font-body-md text-on-surface
+    antialiased flex flex-col min-h-screen"
+>
+
+    <!-- ================= MAIN ================= -->
+    <main
+        class="flex-1 flex flex-col relative w-full
+        pt-safe pb-safe bg-background min-h-screen"
+    >
+
+        <!-- Thanh trên cùng với nút Hủy giao dịch bên tay trái -->
+        <div class="w-full max-w-md mx-auto px-margin pt-4 pb-2 flex items-center justify-between">
+            <button
+                type="button"
+                id="btn-cancel-transaction"
+                class="inline-flex items-center gap-1.5 px-3.5 py-2
+                rounded-xl bg-error-container/70 hover:bg-error-container
+                text-on-error-container font-label-md text-label-md font-semibold
+                transition-all active:scale-95 shadow-sm"
+            >
+                <span class="material-symbols-outlined text-[18px]">
+                    close
+                </span>
+                <span>Hủy giao dịch</span>
+            </button>
+        </div>
+
+        <!-- Nội dung Form nhập thông tin -->
+        <div
+            class="flex-1 flex flex-col justify-center
+            px-margin py-4 gap-5
+            max-w-md mx-auto w-full"
+        >
+
+            <!-- Tiêu đề trang -->
+            <div class="text-center">
+                <h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary font-bold tracking-tight">
+                    Thông Tin Gửi &amp; Nhận
+                </h1>
+                <p class="font-body-sm text-on-surface-variant mt-1">
+                    Vui lòng điền chính xác thông tin để tạo giao dịch
+                </p>
+            </div>
+
+            <!-- Form -->
+            <form id="send-order-form" class="space-y-4" novalidate>
+
+                <!-- Khối Người Gửi -->
+                <div class="p-4 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/40 space-y-3.5">
+                    <div class="flex items-center gap-2 text-secondary-container font-bold">
+                        <div class="w-8 h-8 rounded-lg bg-secondary-fixed flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[20px]">outbox</span>
+                        </div>
+                        <span class="text-label-lg uppercase tracking-wide">Thông tin người gửi</span>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label for="sender-name" class="block font-label-md text-label-md text-primary">
+                            Tên người gửi <span class="text-error">*</span>
+                        </label>
+                        <div class="relative flex items-center">
+                            <span class="material-symbols-outlined text-[20px] text-outline absolute left-3.5 pointer-events-none">
+                                person
+                            </span>
+                            <input
+                                type="text"
+                                id="sender-name"
+                                name="senderName"
+                                required
+                                placeholder="Nhập họ và tên người gửi"
+                                class="w-full pl-10 pr-4 py-3 rounded-xl bg-surface-container/60 border border-outline-variant/60 focus:border-secondary-container focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-secondary-container/20 text-on-surface placeholder:text-outline transition"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label for="sender-phone" class="block font-label-md text-label-md text-primary">
+                            SĐT người gửi <span class="text-error">*</span>
+                        </label>
+                        <div class="relative flex items-center">
+                            <span class="material-symbols-outlined text-[20px] text-outline absolute left-3.5 pointer-events-none">
+                                call
+                            </span>
+                            <input
+                                type="tel"
+                                id="sender-phone"
+                                name="senderPhone"
+                                required
+                                inputmode="tel"
+                                placeholder="Nhập số điện thoại người gửi"
+                                class="w-full pl-10 pr-4 py-3 rounded-xl bg-surface-container/60 border border-outline-variant/60 focus:border-secondary-container focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-secondary-container/20 text-on-surface placeholder:text-outline transition"
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Khối Người Nhận -->
+                <div class="p-4 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/40 space-y-3.5">
+                    <div class="flex items-center gap-2 text-primary font-bold">
+                        <div class="w-8 h-8 rounded-lg bg-primary-fixed flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[20px]">move_to_inbox</span>
+                        </div>
+                        <span class="text-label-lg uppercase tracking-wide">Thông tin người nhận</span>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label for="receiver-name" class="block font-label-md text-label-md text-primary">
+                            Tên người nhận <span class="text-error">*</span>
+                        </label>
+                        <div class="relative flex items-center">
+                            <span class="material-symbols-outlined text-[20px] text-outline absolute left-3.5 pointer-events-none">
+                                person_pin
+                            </span>
+                            <input
+                                type="text"
+                                id="receiver-name"
+                                name="receiverName"
+                                required
+                                placeholder="Nhập họ và tên người nhận"
+                                class="w-full pl-10 pr-4 py-3 rounded-xl bg-surface-container/60 border border-outline-variant/60 focus:border-primary focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline transition"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label for="receiver-phone" class="block font-label-md text-label-md text-primary">
+                            SĐT người nhận <span class="text-error">*</span>
+                        </label>
+                        <div class="relative flex items-center">
+                            <span class="material-symbols-outlined text-[20px] text-outline absolute left-3.5 pointer-events-none">
+                                phone_forwarded
+                            </span>
+                            <input
+                                type="tel"
+                                id="receiver-phone"
+                                name="receiverPhone"
+                                required
+                                inputmode="tel"
+                                placeholder="Nhập số điện thoại người nhận"
+                                class="w-full pl-10 pr-4 py-3 rounded-xl bg-surface-container/60 border border-outline-variant/60 focus:border-primary focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline transition"
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nút Xác Nhận bên dưới -->
+                <div class="pt-2">
+                    <button
+                        type="submit"
+                        id="btn-confirm-order"
+                        class="w-full py-4 px-6 rounded-2xl
+                        bg-gradient-to-r from-secondary-container to-secondary
+                        text-on-secondary font-headline-sm text-headline-sm font-bold
+                        shadow-lg hover:opacity-95 active:scale-[0.98]
+                        transition-all flex items-center justify-center gap-2"
+                    >
+                        <span class="material-symbols-outlined text-[22px]">
+                            check_circle
+                        </span>
+                        <span>Xác nhận</span>
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </main>
+
+</body>
+</html>

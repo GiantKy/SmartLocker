@@ -1,0 +1,75 @@
+# ==============================================================================
+# eKYC Biometric Face ID, Active Liveness & Dual-Model Anti-Spoofing Pipeline
+# Supported Python versions: 3.9, 3.10, 3.11
+# ==============================================================================
+
+# --- 1. Core Computer Vision & Scientific Computing ---
+# opencv-python: Xử lý ảnh, bộ lọc CLAHE, trích xuất đặc trưng Sobel, giải thuật SolvePnP 3D pose
+# Lưu ý: Trên môi trường Linux Server / Docker headless có thể thay bằng `opencv-python-headless`
+opencv-python>=4.8.0.76
+
+# numpy: RẤT QUAN TRỌNG: Giới hạn <2.0.0 để đảm bảo tương thích binary C-API với MediaPipe, SciPy (Procrustes) & ONNX Runtime
+numpy>=1.24.3,<2.0.0
+
+# scipy: Dùng cho thuật toán scipy.spatial.procrustes so khớp hình thái học 3D khuôn mặt giữa các bước
+scipy>=1.10.0
+
+# Pillow: Đọc, ghi và chuyển đổi định dạng ảnh
+Pillow>=9.5.0
+
+# --- 2. Google MediaPipe Tasks API (Face Mesh & Landmarker) ---
+# Trích xuất 478 điểm mốc khuôn mặt 3D, đo chỉ số chớp mắt EAR và góc xoay đầu
+mediapipe>=0.10.14
+
+# --- 3. Deep Learning & Face Detection (Ultralytics YOLO) ---
+# YOLOv8 / YOLOv11 cho phát hiện khuôn mặt (yolo_face_detection_official.pt) và Anti-Spoofing local (yolo_anti_spoof_v4_official.pt)
+ultralytics>=8.0.0
+
+# PyTorch & Torchvision: Nền tảng Deep Learning cho YOLO
+# LƯU Ý GPU: Nếu có GPU NVIDIA CUDA, cài đặt bản CUDA tương ứng theo lệnh:
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118 (hoặc cu121)
+torch>=2.0.0
+torchvision>=0.15.0
+
+# --- 4. Roboflow Inference & RF-DETR Anti-Spoofing (Ensemble Engine) ---
+# Chạy mô hình RF-DETR Small Transformer và YOLO26 Nano (Glass & Mask Occlusion)
+inference>=0.9.0
+inference-sdk>=0.0.9
+roboflow>=1.1.0
+supervision>=0.20.0
+
+# --- 5. ONNX Runtime Engine (Suy luận offline cục bộ) ---
+# Thực thi file trọng số weights.onnx trong thư mục models/roboflow/
+onnx>=1.14.0
+onnxruntime>=1.16.0
+# Lưu ý tăng tốc: Trên Windows có thể dùng `onnxruntime-directml` hoặc `onnxruntime-gpu` nếu có GPU NVIDIA
+
+# --- 6. FastAPI Web & Microservice REST API Hub ---
+# Máy chủ AI Backend (:8000), cung cấp REST API và nhận stream snapshot từ ESP32
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+
+# Bắt buộc để FastAPI xử lý upload file ảnh qua multipart/form-data (UploadFile, File, Form)
+python-multipart>=0.0.6
+
+# Bắt buộc để FastAPI / Starlette phục vụ Web Dashboard qua StaticFiles (app.mount('/static', ...))
+aiofiles>=23.0.0
+
+# Khai báo schema Pydantic cho dữ liệu Request / Response
+pydantic>=2.0.0
+
+# Gửi HTTP Webhook thông báo kết quả thẩm định sang Node.js Backend (:3000)
+requests>=2.28.0
+
+# Quản lý biến môi trường qua file .env (ví dụ: ROBOFLOW_API_KEY, NODEJS_WEBHOOK_URL)
+python-dotenv>=1.0.0
+
+# ==============================================================================
+# OPTIONAL / EXPERIMENTAL / BENCHMARK DEPENDENCIES
+# Bỏ comment các gói dưới đây nếu bạn cần chạy kịch bản benchmark ISO/IEC 30107-3
+# hoặc thử nghiệm các mô hình mở rộng khác:
+# ==============================================================================
+# pandas>=2.0.0         # Xử lý bảng dữ liệu CSV khi chạy benchmark tập mẫu lớn
+# tqdm>=4.65.0          # Thanh tiến trình khi chạy đánh giá hàng loạt ảnh
+# transformers>=4.30.0  # Chỉ cần nếu thử nghiệm mô hình MobileNetV2 Anti-Spoof (Hugging Face)
+# safetensors>=0.4.0    # Chỉ cần kèm theo transformers cho định dạng safetensors
