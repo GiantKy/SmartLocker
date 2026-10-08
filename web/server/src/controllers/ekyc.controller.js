@@ -39,7 +39,9 @@ async function saveSessionVideo(req, res, next) {
         const status = req.query.status || "COMPLETED";
         const duration = req.query.duration || 0;
         const timestamp = Date.now();
-        const filename = `ekyc_${cleanSessionId}_${timestamp}.webm`;
+        const rawContentType = req.headers["content-type"] || "video/webm";
+        const ext = rawContentType.includes("mp4") ? "mp4" : "webm";
+        const filename = `ekyc_${cleanSessionId}_${timestamp}.${ext}`;
         const filePath = path.join(EKYC_VIDEOS_DIR, filename);
 
         const writeStream = fs.createWriteStream(filePath);
@@ -47,7 +49,11 @@ async function saveSessionVideo(req, res, next) {
 
         writeStream.on("finish", () => {
             const stats = fs.statSync(filePath);
-            console.log(`[eKYC VIDEO] Đã lưu video bằng chứng phiên ${cleanSessionId}: ${filename} (${stats.size} bytes)`);
+            console.log(`[eKYC VIDEO] Đã lưu video bằng chứng phiên ${cleanSessionId}: ${filename} (${stats.size} bytes, ${rawContentType})`);
+
+            if (stats.size === 0) {
+                console.warn(`[eKYC VIDEO] Cảnh báo: File video ${filename} rỗng (0 bytes)!`);
+            }
 
             // Lưu file JSON metadata đi kèm
             const metaFile = path.join(EKYC_VIDEOS_DIR, `ekyc_${cleanSessionId}_${timestamp}.json`);
@@ -58,6 +64,7 @@ async function saveSessionVideo(req, res, next) {
                     durationSeconds: Number(duration),
                     filename,
                     sizeBytes: stats.size,
+                    contentType: rawContentType,
                     url: `/uploads/ekyc/videos/${filename}`,
                     createdAt: new Date().toISOString()
                 }, null, 2));
@@ -70,6 +77,7 @@ async function saveSessionVideo(req, res, next) {
                 filename,
                 url: `/uploads/ekyc/videos/${filename}`,
                 sizeBytes: stats.size,
+                contentType: rawContentType,
                 status
             });
         });

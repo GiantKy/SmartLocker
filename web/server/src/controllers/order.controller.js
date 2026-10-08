@@ -3,54 +3,23 @@ const { resetPageToHome } = require("../routes/page.routes");
 
 /**
  * Lưu thông tin người gửi và người nhận tạm thời trên server
- * POST /api/orders/pending
+ * POST /api/orders/save-info
  */
 async function savePendingOrder(req, res, next) {
     try {
-        const { senderName, senderPhone, receiverName, receiverPhone } = req.body || {};
-
-        if (!senderName || !senderPhone || !receiverName || !receiverPhone) {
-            return res.status(400).json({
-                success: false,
-                message: "Thiếu thông tin người gửi hoặc người nhận"
-            });
-        }
-
-        const phoneRegex = /^(0|\+84)[0-9]{8,10}$/;
-        if (!phoneRegex.test(senderPhone.replace(/\s+/g, "")) || !phoneRegex.test(receiverPhone.replace(/\s+/g, ""))) {
-            return res.status(400).json({
-                success: false,
-                message: "Số điện thoại người gửi hoặc người nhận không hợp lệ"
-            });
-        }
+        // Dữ liệu đã được kiểm tra tính đầy đủ & hợp lệ qua middleware validateOrderInfo
+        const { senderName, senderPhone, receiverName, receiverPhone } = req.body;
 
         const saved = orderService.setPendingOrder({
-            senderName: senderName.trim(),
-            senderPhone: senderPhone.trim(),
-            receiverName: receiverName.trim(),
-            receiverPhone: receiverPhone.trim()
+            senderName,
+            senderPhone,
+            receiverName,
+            receiverPhone
         });
 
         return res.status(200).json({
             success: true,
-            message: "Đã lưu thông tin người gửi và người nhận trên server",
-            order: saved
-        });
-    } catch (error) {
-        next(error);
-    }
-}
-
-/**
- * Lấy thông tin người gửi và người nhận đang lưu tạm trên server
- * GET /api/orders/pending
- */
-async function getPendingOrder(req, res, next) {
-    try {
-        const pending = orderService.getPendingOrder();
-        return res.status(200).json({
-            success: true,
-            pendingOrder: pending
+            message: "Lưu thông tin thành công."
         });
     } catch (error) {
         next(error);
@@ -141,7 +110,6 @@ async function closeLocker(req, res, next) {
 
 module.exports = {
     savePendingOrder,
-    getPendingOrder,
     createOrder,
     closeLocker
 };

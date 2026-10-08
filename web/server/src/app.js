@@ -40,6 +40,9 @@ app.use(
 
 app.use("/assets", express.static(clientAssetsPath));
 app.use("/uploads", express.static(uploadsPath));
+app.use("/uploads", (req, res) => {
+    res.status(404).json({ success: false, message: "Upload file not found" });
+});
 
 
 // ========================================

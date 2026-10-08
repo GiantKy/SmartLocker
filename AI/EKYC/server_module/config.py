@@ -66,8 +66,8 @@ MIN_BLINKS_REQUIRED = 1
 # Ngưỡng thử thách chuyển động đầu (Head Movement Challenge)
 HEAD_YAW_THRESHOLD = 16.0
 HEAD_PITCH_THRESHOLD = 12.0
-HEAD_DELTA_YAW_THRESHOLD = 3.0     # Ngưỡng nhích nhẹ đầu tối thiểu (giảm từ 3.5 -> 3.0 độ giúp dễ hoàn thành hơn)
-HEAD_DELTA_PITCH_THRESHOLD = 4.0   # Ngưỡng nhích nhẹ gật đầu tối thiểu
+HEAD_DELTA_YAW_THRESHOLD = 9.0     # Ngưỡng xoay đầu tối thiểu (9.0 độ: yêu cầu quay đầu rõ ràng, không tính nhích nhẹ)
+HEAD_DELTA_PITCH_THRESHOLD = 7.0   # Ngưỡng nhích nhẹ gật đầu tối thiểu
 CHALLENGE_TIMEOUT_SECONDS = 10.0
 
 # =====================================================================

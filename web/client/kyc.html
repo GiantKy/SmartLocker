@@ -290,14 +290,8 @@
                     
                     <!-- Live Camera Viewport -->
                     <div class="camera-viewport">
-                        <img id="cameraStream" src="/stream" alt="ESP32-CAM Live Stream" crossorigin="anonymous">
+                        <img id="cameraStream" src="/stream" alt="ESP32-CAM Live Stream" crossorigin="anonymous" onerror="handleStreamError()">
                         <canvas id="renderCanvas"></canvas>
-
-                        <!-- ESP32 Connection Badge -->
-                        <div class="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md border border-outline-variant/50 shadow-sm text-[11px] font-semibold text-primary pointer-events-none" id="esp32StatusBadge">
-                            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse" id="esp32StatusDot"></span>
-                            <span id="esp32StatusText">Đang tìm ESP32...</span>
-                        </div>
 
                         <!-- Video Recording Indicator Badge (Đỏ REC nhấp nháy ở giữa trên) -->
                         <div id="recordingBadge" class="absolute top-3 left-1/2 -translate-x-1/2 z-10 hidden items-center gap-1.5 px-3 py-1 rounded-full bg-rose-600/90 text-white backdrop-blur-md shadow-md text-[11px] font-bold tracking-wider pointer-events-none transition-all">
@@ -307,9 +301,6 @@
 
                         <!-- Stream Action Buttons -->
                         <div class="absolute top-3 right-3 z-10 flex items-center gap-1.5">
-                            <button type="button" onclick="toggleHMirror()" id="btnToggleMirror" title="Đảo chiều gương (H-Mirror)" class="w-7 h-7 rounded-full bg-surface-container-lowest/90 backdrop-blur-md border border-outline-variant/50 shadow-sm flex items-center justify-center text-primary hover:bg-surface-container active:scale-95 transition">
-                                <span class="material-symbols-outlined text-[16px]" id="mirrorIcon">flip</span>
-                            </button>
                             <button type="button" onclick="reloadStream()" title="Tải lại luồng camera" class="w-7 h-7 rounded-full bg-surface-container-lowest/90 backdrop-blur-md border border-outline-variant/50 shadow-sm flex items-center justify-center text-primary hover:bg-surface-container active:scale-95 transition">
                                 <span class="material-symbols-outlined text-[16px]">refresh</span>
                             </button>
@@ -336,28 +327,35 @@
 
                         <!-- Fullscreen Result Screen -->
                         <div class="result-screen" id="resultScreen">
-                            <div class="w-18 h-18 rounded-full flex items-center justify-center text-3xl mb-3 shadow-lg border-2" id="resultIcon">
+                            <div class="w-18 h-18 rounded-full flex items-center justify-center text-3xl mb-2 shadow-lg border-2" id="resultIcon">
                                 <span class="material-symbols-outlined text-[40px]">check</span>
                             </div>
-                            <div class="font-headline-md text-headline-md font-bold text-white mb-1.5" id="resultTitle">
+                            <div class="font-headline-md text-headline-md font-bold text-white mb-1" id="resultTitle">
                                 Xác Thực Thành Công
                             </div>
-                            <div class="font-body-sm text-surface-container-highest max-w-xs mb-4 text-center" id="resultDesc">
+
+                            <!-- VÙNG HIỂN THỊ ẢNH AI ĐÃ CHECK (CROP FACE) -->
+                            <div id="resultImageContainer" class="hidden flex-col items-center my-2">
+                                <div class="relative rounded-2xl overflow-hidden border-2 border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.35)] bg-black/40">
+                                    <img id="resultFaceImg" src="" alt="Ảnh AI đối soát" class="w-24 h-24 sm:w-28 sm:h-28 object-cover block">
+                                    <div class="absolute bottom-0 inset-x-0 bg-black/60 backdrop-blur-xs text-[10px] text-emerald-300 font-semibold py-0.5 text-center">
+                                        Ảnh đối soát AI
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="font-body-sm text-surface-container-highest max-w-xs mb-3 text-center" id="resultDesc">
                                 Khuôn mặt người thật và danh tính sinh trắc học đã được xác thực an toàn.
                             </div>
                             <button
                                 type="button"
                                 class="inline-flex items-center gap-2 py-3 px-6 rounded-xl bg-gradient-to-r from-secondary-container to-secondary hover:opacity-95 text-white font-bold text-label-md shadow-lg active:scale-95 transition"
                                 id="btnRestart"
-                                onclick="startVerificationFlow()"
+                                onclick="sendControlAction('restart')"
                             >
                                 <span class="material-symbols-outlined text-[20px]">refresh</span>
                                 <span>Thực hiện lượt mới</span>
                             </button>
-                            <a id="btnViewVideo" href="#" target="_blank" class="hidden items-center gap-1.5 text-xs text-secondary hover:underline mt-2.5 bg-surface-container-lowest/90 px-3.5 py-1.5 rounded-full border border-outline-variant/40 shadow-sm backdrop-blur-md">
-                                <span class="material-symbols-outlined text-[16px] text-rose-500">videocam</span>
-                                <span id="viewVideoText">Xem lại video phiên eKYC</span>
-                            </a>
                         </div>
                     </div>
 
@@ -383,1047 +381,348 @@
     <!-- ================= JAVASCRIPT ================= -->
     <script>
         // =========================================================================
-        // STATE MACHINE & CONFIGURATION
+        // PURE PRESENTATION & CONTROL VIEW (DUMB CLIENT)
+        // Client chỉ đóng vai trò hiển thị kết quả AI check, hiển thị ảnh và gửi lệnh điều khiển.
+        // Toàn bộ logic, state machine, kiểm tra khuôn mặt, chớp mắt, quay đầu do Server + AI xử lý.
         // =========================================================================
+
         const API_BASE_URL = window.location.origin;
+        let kycWs = null;
+        let redirectTimer = null;
 
-        const APP_STATE = {
-            ALIGN_FACE: 'ALIGN_FACE',       // Bước 1: Căn chỉnh khuôn mặt
-            COUNTDOWN: 'COUNTDOWN',         // Đếm ngược 3s chụp ảnh chuẩn
-            CHALLENGE_BLINK: 'BLINK',       // Bước 2: Thử thách chớp mắt
-            CHALLENGE_HEAD: 'HEAD',         // Bước 3: Thử thách quay đầu
-            VERIFYING: 'VERIFYING',         // Đang gửi xác thực Ensemble
-            COMPLETED: 'COMPLETED'          // Hoàn thành
-        };
-
-        let currentState = APP_STATE.ALIGN_FACE;
-
-        // ESP32-CAM Stream State
-        let isEsp32Connected = false;
-        let esp32PollTimer = null;
-        let lastKnownEsp32Ip = "";
-        let streamRetryCount = 0;
-
-        // Session Data
-        let sessionId = null;
-        let baseFrameBlob = null;
-        let blinkPassed = false;
-        let headPassed = false;
-        let headAction = 'turn_right';
-
-        // Loop & Timers
-        let poseInterval = null;
-        let challengeInterval = null;
-        let isProcessing = false;
-        let consecutiveGoodFrames = 0;
-        let countdownSec = 3;
-        let countdownTimer = null;
-
-        // Audio Chimes (Web Audio API)
+        // Âm thanh phản hồi trực quan (Web Audio API)
         let audioCtx = null;
-        function playBeep(freq = 600, durationMs = 120, type = 'sine') {
+        function playChime(soundType) {
             try {
                 if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 if (audioCtx.state === 'suspended') audioCtx.resume();
+                if (!soundType) return;
+
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-                osc.type = type;
-                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (durationMs / 1000));
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
-                osc.start();
-                osc.stop(audioCtx.currentTime + (durationMs / 1000));
+
+                if (soundType === 'beep') {
+                    osc.frequency.setValueAtTime(650, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.12);
+                } else if (soundType === 'ding' || soundType === 'good') {
+                    osc.frequency.setValueAtTime(950, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.22);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.22);
+                } else if (soundType === 'warn') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(320, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.2);
+                } else if (soundType === 'success') {
+                    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.2);
+                    setTimeout(() => {
+                        const osc2 = audioCtx.createOscillator();
+                        const gain2 = audioCtx.createGain();
+                        osc2.connect(gain2);
+                        gain2.connect(audioCtx.destination);
+                        osc2.frequency.setValueAtTime(1320, audioCtx.currentTime);
+                        gain2.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                        gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                        osc2.start();
+                        osc2.stop(audioCtx.currentTime + 0.3);
+                    }, 180);
+                } else if (soundType === 'fail') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.35);
+                }
             } catch (e) {}
         }
 
         // =========================================================================
-        // ESP32-CAM STATUS & HARDWARE CONTROLLER
+        // HÀM HIỂN THỊ DUY NHẤT: NHẬN DỮ LIỆU TỪ SERVER VÀ VẼ LÊN GIAO DIỆN
         // =========================================================================
-        function updateEsp32Badge(isLive, ip = "") {
-            const dot = document.getElementById('esp32StatusDot');
-            const text = document.getElementById('esp32StatusText');
-            if (!dot || !text) return;
-            if (isLive) {
-                dot.className = 'w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]';
-                text.textContent = ip ? `ESP32 (${ip})` : 'ESP32 Trực tuyến';
-            } else {
-                dot.className = 'w-2 h-2 rounded-full bg-amber-500 animate-pulse';
-                text.textContent = 'ESP32 Chờ kết nối';
+        function applyRender(ui) {
+            if (!ui) return;
+
+            // 1. Text thông điệp HUD (Chỉ cập nhật DOM khi nội dung thay đổi)
+            if (ui.prompt !== undefined) {
+                const promptEl = document.getElementById('hudPrompt');
+                if (promptEl && promptEl.textContent !== ui.prompt) {
+                    promptEl.textContent = ui.prompt;
+                }
+            }
+
+            // 2. Định dạng khung Oval & Vignette (Chỉ thay đổi class khi có sự khác biệt)
+            const oval = document.getElementById('faceOval');
+            const vignette = document.getElementById('ovalVignette');
+            if (oval) {
+                let cls = 'face-oval';
+                if (ui.ovalState) cls += ' ' + ui.ovalState;
+                if (ui.stageTurn) cls += ' stage-turn';
+                if (oval.className !== cls) oval.className = cls;
+            }
+            if (vignette) {
+                const vCls = 'oval-vignette' + (ui.stageTurn ? ' stage-turn' : '');
+                if (vignette.className !== vCls) vignette.className = vCls;
+            }
+
+            // 3. Số đếm ngược
+            const countBadge = document.getElementById('countdownBadge');
+            if (countBadge) {
+                if (ui.countdown > 0) {
+                    if (countBadge.style.display !== 'flex') countBadge.style.display = 'flex';
+                    const cStr = String(ui.countdown);
+                    if (countBadge.textContent !== cStr) countBadge.textContent = cStr;
+                } else {
+                    if (countBadge.style.display !== 'none') countBadge.style.display = 'none';
+                }
+            }
+
+            // 4. Mũi tên định hướng
+            const arrowLeft = document.getElementById('arrowLeft');
+            const arrowRight = document.getElementById('arrowRight');
+            if (arrowLeft) {
+                const leftDisplay = (ui.arrow === 'left') ? 'flex' : 'none';
+                if (arrowLeft.style.display !== leftDisplay) arrowLeft.style.display = leftDisplay;
+            }
+            if (arrowRight) {
+                const rightDisplay = (ui.arrow === 'right') ? 'flex' : 'none';
+                if (arrowRight.style.display !== rightDisplay) arrowRight.style.display = rightDisplay;
+            }
+
+            // 5. Thanh tiến trình
+            const track = document.getElementById('progressTrack');
+            const bar = document.getElementById('progressBar');
+            if (track && bar) {
+                if (ui.progress !== null && ui.progress !== undefined) {
+                    if (track.style.display !== 'block') {
+                        track.classList.remove('hidden');
+                        track.style.display = 'block';
+                    }
+                    bar.style.width = Math.min(100, Math.max(0, ui.progress)) + '%';
+                } else {
+                    if (track.style.display !== 'none') track.style.display = 'none';
+                }
+            }
+
+            // 6. Âm thanh phản hồi
+            if (ui.sound) {
+                playChime(ui.sound);
+            }
+
+            // 7. Đồng bộ hiển thị Huy hiệu REC (Ghi hình được thực hiện hoàn toàn ở Server)
+            if (ui.recordAction === 'START' || (ui.countdown > 0 && ui.countdown <= 3)) {
+                startRecBadge();
+            }
+            if (ui.recordAction === 'CANCEL') {
+                stopRecBadge();
+            }
+            if (ui.recordAction === 'STOP') {
+                stopRecBadge();
+            }
+
+            // 8. Màn hình kết quả
+            const resScreen = document.getElementById('resultScreen');
+            if (resScreen) {
+                if (ui.result && ui.result.show) {
+                    stopRecBadge();
+                    if (resScreen.style.display !== 'flex') resScreen.style.display = 'flex';
+
+                    const icon = document.getElementById('resultIcon');
+                    const title = document.getElementById('resultTitle');
+                    const desc = document.getElementById('resultDesc');
+                    const btnRestart = document.getElementById('btnRestart');
+                    const imgContainer = document.getElementById('resultImageContainer');
+                    const btnView = document.getElementById('btnViewVideo');
+
+                    if (ui.result.success) {
+                        // KHI THÀNH CÔNG: CHỈ HIỆN XÁC THỰC THÀNH CÔNG VÀ KHÔNG HIỆN GÌ NỮA, CHUYỂN SANG TRANG LOCKER
+                        if (icon) {
+                            icon.className = 'w-20 h-20 rounded-full flex items-center justify-center mb-4 shadow-xl border-2 bg-emerald-500/20 border-emerald-500 text-emerald-400';
+                            icon.innerHTML = '<span class="material-symbols-outlined text-[48px]">check</span>';
+                            icon.style.display = 'flex';
+                        }
+                        if (title) {
+                            title.textContent = 'Xác Thực Thành Công';
+                            title.style.display = 'block';
+                        }
+
+                        // Ẩn tất cả các thành phần khác khi thành công
+                        if (desc) {
+                            desc.textContent = '';
+                            desc.style.display = 'none';
+                        }
+                        if (imgContainer) {
+                            imgContainer.classList.add('hidden');
+                            imgContainer.classList.remove('flex');
+                            imgContainer.style.display = 'none';
+                        }
+                        if (btnRestart) {
+                            btnRestart.style.display = 'none';
+                        }
+
+                        // Chuyển tiếp ngay sang trang locker
+                        if (redirectTimer) clearTimeout(redirectTimer);
+                        const targetUrl = ui.result.redirectUrl || '/locker';
+                        redirectTimer = setTimeout(() => {
+                            window.location.href = targetUrl;
+                        }, 1200);
+
+                    } else {
+                        // KHI THẤT BẠI: HIỆN THẤT BẠI VÀ CÓ NÚT LÀM LẠI
+                        if (icon) {
+                            icon.className = 'w-20 h-20 rounded-full flex items-center justify-center mb-3 shadow-xl border-2 bg-rose-500/20 border-rose-500 text-rose-400';
+                            icon.innerHTML = '<span class="material-symbols-outlined text-[48px]">close</span>';
+                            icon.style.display = 'flex';
+                        }
+                        if (title) {
+                            title.textContent = ui.result.title || 'Xác Thực Thất Bại';
+                            title.style.display = 'block';
+                        }
+                        if (desc) {
+                            desc.textContent = ui.result.desc || 'Không vượt qua kiểm tra sinh trắc học. Vui lòng bấm thử lại.';
+                            desc.style.display = 'block';
+                        }
+                        if (imgContainer) {
+                            imgContainer.classList.add('hidden');
+                            imgContainer.classList.remove('flex');
+                            imgContainer.style.display = 'none';
+                        }
+                        if (btnRestart) {
+                            btnRestart.style.display = 'inline-flex';
+                        }
+                    }
+                } else {
+                    if (resScreen.style.display !== 'none') resScreen.style.display = 'none';
+                }
             }
         }
 
-        async function checkEsp32Connection() {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/device/info?t=${Date.now()}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    isEsp32Connected = Boolean(data.is_live || data.has_frame || data.socket_connected || data.is_connected);
-                    if (data.esp32_ip) lastKnownEsp32Ip = data.esp32_ip;
-                    updateEsp32Badge(isEsp32Connected, data.esp32_ip);
-                    return isEsp32Connected;
+        // =========================================================================
+        // ĐIỀU KHIỂN (CONTROLS): GỬI THAO TÁC NGƯỜI DÙNG TỚI SERVER
+        // =========================================================================
+        function sendControlAction(action, data = {}) {
+            if (kycWs && kycWs.readyState === WebSocket.OPEN) {
+                kycWs.send(JSON.stringify({ action, ...data }));
+            }
+            if (action === 'restart') {
+                if (redirectTimer) {
+                    clearTimeout(redirectTimer);
+                    redirectTimer = null;
                 }
-            } catch (e) {}
-            isEsp32Connected = false;
-            updateEsp32Badge(false);
-            return false;
+                stopRecBadge();
+                const resScreen = document.getElementById('resultScreen');
+                if (resScreen) resScreen.style.display = 'none';
+                reloadStream();
+            }
+        }
+
+        let streamRetryTimeout = null;
+        function handleStreamError() {
+            if (streamRetryTimeout) return;
+            streamRetryTimeout = setTimeout(() => {
+                streamRetryTimeout = null;
+                reloadStream();
+            }, 800);
         }
 
         function reloadStream() {
             const img = document.getElementById('cameraStream');
-            if (img) {
-                img.src = `${API_BASE_URL}/stream?t=${Date.now()}`;
-            }
+            if (img) img.src = `${API_BASE_URL}/stream?t=${Date.now()}`;
         }
 
         // =========================================================================
-        // ĐIỀU KHIỂN LẬT GƯƠNG H-MIRROR (HARDWARE + PERSISTENCE)
+        // TRẠNG THÁI GHI HÌNH REC TRÊN GIAO DIỆN (SERVER ĐẢM NHIỆM 100% GHI HÌNH)
         // =========================================================================
-        let currentHMirror = localStorage.getItem('kyc_hmirror') !== null 
-            ? parseInt(localStorage.getItem('kyc_hmirror'), 10) 
-            : 0;
+        let isRecordingUi = false;
+        let recTimerInterval = null;
+        let recStartTime = 0;
 
-        async function toggleHMirror() {
-            currentHMirror = (currentHMirror === 1) ? 0 : 1;
-            await applyHMirror(currentHMirror);
-        }
-
-        async function applyHMirror(val) {
-            currentHMirror = val ? 1 : 0;
-            localStorage.setItem('kyc_hmirror', currentHMirror);
-            const btn = document.getElementById('btnToggleMirror');
-            if (btn) {
-                if (currentHMirror === 1) {
-                    btn.style.background = 'rgba(16, 185, 129, 0.25)';
-                    btn.style.color = '#10b981';
-                    btn.title = 'Đang BẬT lật gương (Bấm để TẮT)';
-                } else {
-                    btn.style.background = '';
-                    btn.style.color = '';
-                    btn.title = 'Đang TẮT lật gương (Bấm để BẬT)';
-                }
-            }
-
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/camera/control?hmirror=${currentHMirror}`);
-                if (res.ok) {
-                    console.log(`[H-Mirror] Đã cập nhật chế độ lật gương ESP32 -> ${currentHMirror}`);
-                }
-            } catch (e) {
-                console.warn('[H-Mirror] Không thể gửi lệnh tới ESP32:', e);
-            }
-        }
-
-        // =========================================================================
-        // E-KYC SESSION VIDEO RECORDER (CANVAS CAPTURE STREAM -> MEDIARECORDER)
-        // Tự động quay toàn bộ phiên từ đầu tới cuối để lưu trữ làm bằng chứng xác thực
-        // =========================================================================
-        let mediaRecorder = null;
-        let recordedChunks = [];
-        let recordCanvas = null;
-        let recordCtx = null;
-        let recordAnimFrame = null;
-        let recordingStartTime = null;
-        let recordingTimerInterval = null;
-        let isRecordingSession = false;
-        let recordedVideoBlob = null;
-        let recordedVideoUrl = null;
-
-        function getSupportedMimeType() {
-            const types = [
-                'video/webm;codecs=vp8,opus',
-                'video/webm;codecs=vp8',
-                'video/webm;codecs=h264',
-                'video/webm',
-                'video/mp4;codecs=h264',
-                'video/mp4'
-            ];
-            for (const t of types) {
-                if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) {
-                    return t;
-                }
-            }
-            return '';
-        }
-
-        function startSessionRecording() {
-            if (isRecordingSession) return;
-            recordedChunks = [];
-            recordedVideoBlob = null;
-            recordedVideoUrl = null;
-
-            if (!recordCanvas) {
-                recordCanvas = document.createElement('canvas');
-                recordCanvas.width = 640;
-                recordCanvas.height = 480;
-                recordCtx = recordCanvas.getContext('2d');
-            }
-
-            if (!recordCanvas.captureStream) {
-                console.warn('[Video Recorder] Trình duyệt không hỗ trợ captureStream() trên canvas.');
-                return;
-            }
-
-            const stream = recordCanvas.captureStream(20);
-            const mimeType = getSupportedMimeType();
-
-            try {
-                mediaRecorder = mimeType 
-                    ? new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 1200000 })
-                    : new MediaRecorder(stream);
-            } catch (e) {
-                console.warn('[Video Recorder] Khởi tạo MediaRecorder thất bại:', e);
-                return;
-            }
-
-            mediaRecorder.ondataavailable = (event) => {
-                if (event.data && event.data.size > 0) {
-                    recordedChunks.push(event.data);
-                }
-            };
-
-            try {
-                mediaRecorder.start(250);
-            } catch (e) {
-                console.warn('[Video Recorder] Lỗi khi start MediaRecorder:', e);
-                return;
-            }
-
-            isRecordingSession = true;
-            recordingStartTime = Date.now();
-
-            // Hiển thị huy hiệu REC đỏ trên màn hình
+        function startRecBadge() {
+            if (isRecordingUi) return;
+            isRecordingUi = true;
+            recStartTime = Date.now();
             const badge = document.getElementById('recordingBadge');
             const badgeText = document.getElementById('recordingText');
             if (badge) {
                 badge.classList.remove('hidden');
                 badge.classList.add('flex');
             }
+            if (badgeText) badgeText.textContent = 'REC 00:00';
 
-            if (recordingTimerInterval) clearInterval(recordingTimerInterval);
-            recordingTimerInterval = setInterval(() => {
-                if (!isRecordingSession) return;
-                const elapsedSec = Math.floor((Date.now() - recordingStartTime) / 1000);
+            if (recTimerInterval) clearInterval(recTimerInterval);
+            recTimerInterval = setInterval(() => {
+                if (!isRecordingUi) return;
+                const elapsedSec = Math.floor((Date.now() - recStartTime) / 1000);
                 const mins = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
                 const secs = String(elapsedSec % 60).padStart(2, '0');
                 if (badgeText) badgeText.textContent = `REC ${mins}:${secs}`;
             }, 1000);
-
-            // Vòng lặp vẽ khung hình kèm thông tin kiểm toán bảo mật (Watermark)
-            function renderRecordFrame() {
-                if (!isRecordingSession) return;
-                const img = document.getElementById('cameraStream');
-                if (img && img.complete && img.naturalWidth > 0 && recordCtx) {
-                    recordCtx.drawImage(img, 0, 0, 640, 480);
-
-                    // Thanh thông tin kiểm toán bảo mật (Audit Trail)
-                    const now = new Date();
-                    const timeStr = now.toLocaleDateString('vi-VN') + ' ' + now.toLocaleTimeString('vi-VN');
-                    recordCtx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-                    recordCtx.fillRect(10, 442, 620, 28);
-
-                    recordCtx.font = 'bold 12px monospace';
-                    recordCtx.fillStyle = '#ef4444';
-                    recordCtx.fillText('● REC', 20, 461);
-
-                    recordCtx.fillStyle = '#e2e8f0';
-                    recordCtx.font = '11px monospace';
-                    recordCtx.fillText(timeStr, 68, 461);
-
-                    recordCtx.fillStyle = '#38bdf8';
-                    recordCtx.font = 'bold 11px sans-serif';
-                    recordCtx.fillText(`eKYC AUDIT | ID: ${sessionId || 'INITIALIZING'}`, 250, 461);
-                }
-                recordAnimFrame = requestAnimationFrame(renderRecordFrame);
-            }
-            renderRecordFrame();
-            console.log('[Video Recorder] Bắt đầu ghi hình video phiên eKYC từ đầu tới cuối!');
         }
 
-        async function stopAndUploadSessionRecording(isSuccess) {
-            if (!isRecordingSession) return;
-            isRecordingSession = false;
-
-            if (recordAnimFrame) cancelAnimationFrame(recordAnimFrame);
-            if (recordingTimerInterval) clearInterval(recordingTimerInterval);
-
+        function stopRecBadge() {
+            isRecordingUi = false;
+            if (recTimerInterval) {
+                clearInterval(recTimerInterval);
+                recTimerInterval = null;
+            }
             const badge = document.getElementById('recordingBadge');
             if (badge) {
                 badge.classList.add('hidden');
                 badge.classList.remove('flex');
             }
+        }
 
-            if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+        // =========================================================================
+        // KẾT NỐI WEBSOCKET TỚI SERVER NODE.JS
+        // =========================================================================
+        function connectKycWs() {
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${wsProtocol}//${window.location.host}/api/kyc/ws`;
 
-            return new Promise((resolve) => {
-                mediaRecorder.onstop = async () => {
-                    try {
-                        const mimeType = mediaRecorder.mimeType || 'video/webm';
-                        recordedVideoBlob = new Blob(recordedChunks, { type: mimeType });
-                        console.log(`[Video Recorder] Hoàn tất ghi video (${recordedVideoBlob.size} bytes). Đang tải lên Server...`);
+            kycWs = new WebSocket(wsUrl);
 
-                        const durationSec = Math.max(1, Math.round((Date.now() - recordingStartTime) / 1000));
-                        const sId = sessionId || `session_${Date.now()}`;
-                        const uploadUrl = `${API_BASE_URL}/api/ekyc/session-video?sessionId=${encodeURIComponent(sId)}&status=${isSuccess ? 'APPROVED' : 'FAILED'}&duration=${durationSec}`;
+            kycWs.onopen = () => {
+                reloadStream();
+            };
 
-                        const res = await fetch(uploadUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': mimeType,
-                                'X-Session-ID': sId
-                            },
-                            body: recordedVideoBlob
-                        });
-
-                        if (res.ok) {
-                            const data = await res.json();
-                            console.log('[Video Recorder] Video phiên đã lưu trên Server:', data);
-                            recordedVideoUrl = data.url || data.path;
-                            sessionStorage.setItem('last_ekyc_video', recordedVideoUrl);
-
-                            // Hiển thị nút xem video trên màn hình kết quả
-                            const btnView = document.getElementById('btnViewVideo');
-                            if (btnView && recordedVideoUrl) {
-                                btnView.href = recordedVideoUrl;
-                                btnView.classList.remove('hidden');
-                                btnView.classList.add('inline-flex');
-                            }
-                        }
-                    } catch (err) {
-                        console.warn('[Video Recorder] Lỗi khi upload video phiên:', err);
+            kycWs.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    if (msg.type === 'STREAM_RELOAD' || msg.type === 'CAMERA_RECONNECTED' || msg.type === 'ESP32_RECONNECTED') {
+                        reloadStream();
                     }
-                    resolve(recordedVideoUrl);
-                };
-                try {
-                    mediaRecorder.stop();
-                } catch (e) {
-                    resolve(null);
-                }
-            });
-        }
-
-        /**
-         * Quản lý BẬT / TẮT camera ESP32 theo nhu cầu (On-Demand) để chống nóng chip và cảm biến:
-         * - Chỉ bật camera khi người dùng bước vào luồng eKYC.
-         * - Tắt camera ngay khi xác thực xong (thành công hoặc hủy hoặc rời trang).
-         */
-        async function setCameraPower(enable) {
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/camera/power?enable=${enable ? 1 : 0}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    return Boolean(data.is_camera_active);
-                }
-            } catch (e) {}
-            return false;
-        }
-
-        // =========================================================================
-        // ESP32-CAM STREAM SETUP & FRAME CAPTURE
-        // =========================================================================
-        async function initCamera() {
-            stopAllStreams();
-            const img = document.getElementById('cameraStream');
-            if (!img) return;
-
-            updateHUD({
-                prompt: 'Đang kích hoạt camera ESP32...',
-                ovalState: 'state-warning'
-            });
-
-            // 1. Gửi lệnh BẬT camera ESP32 (trước đó camera ở chế độ tắt để chống nóng)
-            await setCameraPower(true);
-
-            img.onerror = () => {
-                isEsp32Connected = false;
-                updateEsp32Badge(false);
-                updateHUD({
-                    prompt: 'Đang đợi camera ESP32 gửi hình ảnh...',
-                    ovalState: 'state-warning'
-                });
-                streamRetryCount++;
-                if (streamRetryCount <= 3) {
-                    setTimeout(reloadStream, 1200);
-                }
-            };
-
-            img.onload = () => {
-                streamRetryCount = 0;
-                isEsp32Connected = true;
-                updateEsp32Badge(true, lastKnownEsp32Ip);
-            };
-
-            applyHMirror(currentHMirror);
-            reloadStream();
-
-            if (esp32PollTimer) clearInterval(esp32PollTimer);
-            esp32PollTimer = setInterval(checkEsp32Connection, 2000);
-            await checkEsp32Connection();
-
-            startVerificationFlow();
-        }
-
-        function stopAllStreams() {
-            if (esp32PollTimer) {
-                clearInterval(esp32PollTimer);
-                esp32PollTimer = null;
-            }
-            clearInterval(poseInterval);
-            clearInterval(challengeInterval);
-            clearInterval(countdownTimer);
-            // Gửi lệnh TẮT camera ESP32 để chống nóng chip và cảm biến
-            setCameraPower(false);
-        }
-
-        async function captureFrameBlob(targetW = 640, targetH = 480) {
-            const img = document.getElementById('cameraStream');
-            if (!img || !img.complete || img.naturalWidth <= 0) {
-                // Fallback: Lấy frame mới nhất từ Node.js buffer trong RAM
-                try {
-                    const res = await fetch(`${API_BASE_URL}/api/stream/latest?t=${Date.now()}`);
-                    if (res.ok) return await res.blob();
+                    if (msg.type === 'AI_COUNTDOWN_START') {
+                        startRecBadge();
+                    } else if (msg.type === 'AI_COUNTDOWN_CANCEL' || msg.type === 'AI_RESTART' || msg.type === 'CAMERA_DISCONNECTED') {
+                        stopRecBadge();
+                    }
+                    if (msg.render) {
+                        applyRender(msg.render);
+                    }
                 } catch (e) {}
-                return null;
-            }
+            };
 
-            try {
-                const canvas = document.getElementById('renderCanvas');
-                canvas.width = targetW;
-                canvas.height = targetH;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, targetW, targetH);
-
-                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.88));
-                if (blob && blob.size > 500) return blob;
-            } catch (err) {
-                // Nếu canvas tainted, fallback API
-            }
-
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/stream/latest?t=${Date.now()}`);
-                if (res.ok) return await res.blob();
-            } catch (e) {}
-            return null;
+            kycWs.onclose = () => {
+                setTimeout(connectKycWs, 2000);
+            };
         }
 
         // =========================================================================
-        // STEP 1: POSE & OVAL ALIGNMENT LOOP
+        // KHỞI TẠO & SỰ KIỆN HỦY GIAO DỊCH
         // =========================================================================
-        function startVerificationFlow() {
-            clearInterval(poseInterval);
-            clearInterval(challengeInterval);
-            clearInterval(countdownTimer);
-
-            currentState = APP_STATE.ALIGN_FACE;
-            sessionId = null;
-            baseFrameBlob = null;
-            blinkPassed = false;
-            headPassed = false;
-            consecutiveGoodFrames = 0;
-            isProcessing = false;
-
-            // Bắt đầu tự động quay video toàn bộ phiên eKYC từ đầu tới cuối
-            startSessionRecording();
-
-            setStep(1);
-            document.getElementById('resultScreen').style.display = 'none';
-            document.getElementById('countdownBadge').style.display = 'none';
-            document.getElementById('progressTrack').style.display = 'none';
-            hideArrows();
-
-            const btnView = document.getElementById('btnViewVideo');
-            if (btnView) {
-                btnView.classList.add('hidden');
-                btnView.classList.remove('inline-flex');
-                btnView.href = '#';
-            }
-
-            updateHUD({
-                prompt: 'Vui lòng đưa mặt vào giữa khung oval',
-                ovalState: ''
-            });
-
-            poseInterval = setInterval(async () => {
-                if ((currentState !== APP_STATE.ALIGN_FACE && currentState !== APP_STATE.COUNTDOWN) || isProcessing) return;
-
-                if (!isEsp32Connected) {
-                    const live = await checkEsp32Connection();
-                    if (!live) {
-                        updateHUD({
-                            prompt: 'Đang đợi ESP32-CAM kết nối...',
-                            ovalState: 'state-warning'
-                        });
-                        return;
-                    }
-                }
-
-                isProcessing = true;
-                try {
-                    const blob = await captureFrameBlob(480, 360);
-                    if (!blob || (currentState !== APP_STATE.ALIGN_FACE && currentState !== APP_STATE.COUNTDOWN)) return;
-
-                    const formData = new FormData();
-                    formData.append('file', blob, 'preview.jpg');
-
-                    const res = await fetch(`${API_BASE_URL}/api/v1/validate-pose`, {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    if (res.ok) {
-                        const data = await res.json();
-                        handlePoseResponse(data, blob);
-                    }
-                } catch (e) {
-                } finally {
-                    isProcessing = false;
-                }
-            }, 180);
-        }
-
-        function handlePoseResponse(data, frameBlob) {
-            if (currentState !== APP_STATE.ALIGN_FACE && currentState !== APP_STATE.COUNTDOWN) return;
-
-            const isAlignedGood = Boolean(
-                data.is_aligned_good ||
-                (data.fit_oval && data.face_in_oval && data.is_valid && !data.is_occluded)
-            );
-
-            // =======================================================================
-            // KIỂM SOÁT KHI ĐANG ĐẾM NGƯỢC 3 2 1
-            // =======================================================================
-            if (currentState === APP_STATE.COUNTDOWN) {
-                if (!isAlignedGood || !data.face_in_oval || data.is_off_center || !data.has_face || (data.num_faces > 1)) {
-                    cancelCountdown();
-                    return;
-                }
-
-                updateHUD({
-                    prompt: `Giữ yên khuôn mặt (${countdownSec}s)...`,
-                    ovalState: 'state-aligned'
-                });
-                return;
-            }
-
-            // =======================================================================
-            // TRẠNG THÁI BƯỚC 1: CĂN CHỈNH KHUÔN MẶT (ALIGN_FACE)
-            // =======================================================================
-            if (!data.has_face || data.num_faces === 0) {
-                consecutiveGoodFrames = 0;
-                updateHUD({
-                    prompt: 'Vui lòng đưa mặt vào giữa khung oval',
-                    ovalState: ''
-                });
-                return;
-            }
-
-            if (data.num_faces !== undefined && data.num_faces > 1) {
-                consecutiveGoodFrames = 0;
-                updateHUD({
-                    prompt: 'Vui lòng chỉ 1 người trước camera',
-                    ovalState: 'state-danger'
-                });
-                return;
-            }
-
-            if (data.is_occluded) {
-                consecutiveGoodFrames = 0;
-                updateHUD({
-                    prompt: 'Vui lòng không che mặt',
-                    ovalState: 'state-danger'
-                });
-                return;
-            }
-
-            if (isAlignedGood) {
-                consecutiveGoodFrames++;
-                updateHUD({
-                    prompt: 'Giữ yên khuôn mặt...',
-                    ovalState: 'state-aligned'
-                });
-
-                if (consecutiveGoodFrames >= 3) {
-                    startCaptureCountdown();
-                }
-                return;
-            }
-
-            consecutiveGoodFrames = 0;
-            if (!data.face_in_oval) {
-                updateHUD({
-                    prompt: 'Vui lòng đưa mặt vào giữa khung oval',
-                    ovalState: 'state-warning'
-                });
-            } else if (data.is_off_center) {
-                updateHUD({
-                    prompt: 'Vui lòng căn mặt vào giữa khung oval',
-                    ovalState: 'state-warning'
-                });
-            } else if (data.is_too_far) {
-                updateHUD({
-                    prompt: 'Vui lòng tiến lại gần camera hơn',
-                    ovalState: 'state-warning'
-                });
-            } else if (data.is_too_close) {
-                updateHUD({
-                    prompt: 'Vui lòng lùi ra xa camera một chút',
-                    ovalState: 'state-warning'
-                });
-            } else {
-                updateHUD({
-                    prompt: 'Vui lòng nhìn thẳng vào camera',
-                    ovalState: 'state-warning'
-                });
-            }
-        }
-
-        // =========================================================================
-        // COUNTDOWN & SESSION INITIALIZATION
-        // =========================================================================
-        function startCaptureCountdown() {
-            currentState = APP_STATE.COUNTDOWN;
-
-            countdownSec = 3;
-            const badge = document.getElementById('countdownBadge');
-            badge.style.display = 'flex';
-            badge.textContent = countdownSec;
-            playBeep(650, 150);
-
-            updateHUD({
-                prompt: `Giữ yên khuôn mặt (${countdownSec}s)...`,
-                ovalState: 'state-aligned'
-            });
-
-            if (countdownTimer) clearInterval(countdownTimer);
-            countdownTimer = setInterval(async () => {
-                if (currentState !== APP_STATE.COUNTDOWN) {
-                    clearInterval(countdownTimer);
-                    countdownTimer = null;
-                    return;
-                }
-
-                countdownSec--;
-                if (countdownSec > 0) {
-                    badge.textContent = countdownSec;
-                    playBeep(650, 150);
-                    updateHUD({
-                        prompt: `Giữ yên khuôn mặt (${countdownSec}s)...`,
-                        ovalState: 'state-aligned'
-                    });
-                } else {
-                    clearInterval(countdownTimer);
-                    countdownTimer = null;
-                    clearInterval(poseInterval);
-                    poseInterval = null;
-                    badge.style.display = 'none';
-                    playBeep(1000, 300);
-                    await executeSessionInit();
-                }
-            }, 800);
-        }
-
-        function cancelCountdown(reasonMessage = null) {
-            if (countdownTimer) {
-                clearInterval(countdownTimer);
-                countdownTimer = null;
-            }
-            consecutiveGoodFrames = 0;
-            countdownSec = 3;
-
-            const badge = document.getElementById('countdownBadge');
-            if (badge) badge.style.display = 'none';
-
-            currentState = APP_STATE.ALIGN_FACE;
-            playBeep(320, 220, 'sawtooth');
-
-            updateHUD({
-                prompt: 'Vui lòng đưa mặt vào giữa khung oval',
-                ovalState: 'state-warning'
-            });
-        }
-
-        async function executeSessionInit() {
-            updateHUD({
-                prompt: 'Đang ghi nhận hình ảnh...',
-                ovalState: 'state-aligned'
-            });
-
-            baseFrameBlob = await captureFrameBlob(640, 480);
-            if (!baseFrameBlob) {
-                restartFlow('Vui lòng thử lại');
-                return;
-            }
-
-            try {
-                const formData = new FormData();
-                formData.append('file', baseFrameBlob, 'base_frontal.jpg');
-
-                const res = await fetch(`${API_BASE_URL}/api/v1/liveness/init-session`, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.success && data.session_id) {
-                        sessionId = data.session_id;
-                        startBlinkChallenge();
-                        return;
-                    }
-                }
-                restartFlow('Vui lòng thử lại');
-            } catch (e) {
-                restartFlow('Lỗi kết nối máy chủ');
-            }
-        }
-
-        // =========================================================================
-        // STEP 2: EYE BLINK CHALLENGE
-        // =========================================================================
-        function startBlinkChallenge() {
-            currentState = APP_STATE.CHALLENGE_BLINK;
-            setStep(2);
-
-            updateHUD({
-                prompt: 'Vui lòng chớp mắt',
-                ovalState: 'state-challenge'
-            });
-
-            const startTime = Date.now();
-            const timeoutSec = 10.0;
-            let blinkCounter = 0;
-            let blinkState = false;
-            let baselineEAR = 0.28;
-
-            challengeInterval = setInterval(async () => {
-                if (currentState !== APP_STATE.CHALLENGE_BLINK || isProcessing) return;
-
-                const elapsed = (Date.now() - startTime) / 1000;
-                if (elapsed > timeoutSec) {
-                    clearInterval(challengeInterval);
-                    showFinalResult(false, 'Hết thời gian thực hiện chớp mắt');
-                    return;
-                }
-
-                isProcessing = true;
-                try {
-                    const frameBlob = await captureFrameBlob(640, 480);
-                    if (!frameBlob) return;
-
-                    const formData = new FormData();
-                    formData.append('file', frameBlob, 'frame.jpg');
-                    if (sessionId) formData.append('session_id', sessionId);
-                    formData.append('blink_counter', blinkCounter);
-                    formData.append('blink_state', blinkState ? 'true' : 'false');
-                    formData.append('baseline_ear', baselineEAR);
-
-                    const res = await fetch(`${API_BASE_URL}/api/v1/liveness/blink-frame`, {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    if (res.ok) {
-                        const data = await res.json();
-
-                        if (data.person_left_oval || data.reset_to_step === 'face_detect' || data.same_person === false) {
-                            clearInterval(challengeInterval);
-                            restartFlow('Vui lòng đưa mặt vào giữa khung oval');
-                            return;
-                        }
-
-                        if (data.is_occluded) {
-                            updateHUD({
-                                prompt: 'Vui lòng không che mặt',
-                                ovalState: 'state-danger'
-                            });
-                            return;
-                        }
-
-                        if (data.blink_counter !== undefined) blinkCounter = data.blink_counter;
-                        if (data.blink_state !== undefined) blinkState = data.blink_state;
-                        if (data.baseline_ear !== undefined) baselineEAR = data.baseline_ear;
-
-                        updateHUD({
-                            prompt: blinkState ? 'Vui lòng mở mắt' : 'Vui lòng chớp mắt',
-                            ovalState: 'state-challenge'
-                        });
-
-                        if (data.passed) {
-                            clearInterval(challengeInterval);
-                            blinkPassed = true;
-                            playBeep(900, 200);
-                            updateHUD({
-                                prompt: 'Đã hoàn thành chớp mắt',
-                                ovalState: 'state-aligned'
-                            });
-                            setTimeout(startHeadChallenge, 600);
-                        }
-                    }
-                } catch (e) {
-                } finally {
-                    isProcessing = false;
-                }
-            }, 200);
-        }
-
-        // =========================================================================
-        // STEP 3: HEAD MOVEMENT CHALLENGE
-        // =========================================================================
-        async function startHeadChallenge() {
-            currentState = APP_STATE.CHALLENGE_HEAD;
-            setStep(3);
-
-            headAction = 'turn_right';
-
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/v1/liveness/start-head`, { method: 'POST' });
-                if (res.ok) {
-                    const data = await res.json();
-                    headAction = data.action || 'turn_right';
-                }
-            } catch (e) {}
-
-            document.getElementById('faceOval').classList.add('stage-turn');
-            document.getElementById('ovalVignette').classList.add('stage-turn');
-
-            const isTurnLeft = headAction.includes('left');
-            showArrow(isTurnLeft ? 'left' : 'right');
-
-            const track = document.getElementById('progressTrack');
-            const bar = document.getElementById('progressBar');
-            track.classList.remove('hidden');
-            track.style.display = 'block';
-            bar.style.width = '0%';
-
-            updateHUD({
-                prompt: isTurnLeft ? 'Vui lòng quay mặt sang trái' : 'Vui lòng quay mặt sang phải',
-                ovalState: 'state-challenge'
-            });
-
-            const startTime = Date.now();
-            const timeoutSec = 10.0;
-
-            challengeInterval = setInterval(async () => {
-                if (currentState !== APP_STATE.CHALLENGE_HEAD || isProcessing) return;
-
-                const elapsed = (Date.now() - startTime) / 1000;
-                if (elapsed > timeoutSec) {
-                    clearInterval(challengeInterval);
-                    showFinalResult(false, 'Hết thời gian thử thách quay đầu');
-                    return;
-                }
-
-                isProcessing = true;
-                try {
-                    const frameBlob = await captureFrameBlob(640, 480);
-                    if (!frameBlob) return;
-
-                    const formData = new FormData();
-                    formData.append('file', frameBlob, 'frame.jpg');
-                    if (sessionId) formData.append('session_id', sessionId);
-
-                    const res = await fetch(`${API_BASE_URL}/api/v1/liveness/update-head`, {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    if (res.ok) {
-                        const data = await res.json();
-
-                        if (data.state === 'RESET' || data.person_left_oval || data.person_swapped || data.same_person === false) {
-                            clearInterval(challengeInterval);
-                            restartFlow('Vui lòng đưa mặt vào giữa khung oval');
-                            return;
-                        }
-
-                        if (data.is_occluded) {
-                            updateHUD({
-                                prompt: 'Vui lòng không che mặt',
-                                ovalState: 'state-danger'
-                            });
-                            return;
-                        }
-
-                        const pct = Math.min(100, Math.round((data.progress || 0) * 100));
-                        bar.style.width = `${pct}%`;
-
-                        const activePrompt = data.is_matched 
-                            ? 'Giữ nguyên góc mặt...' 
-                            : (isTurnLeft ? 'Vui lòng quay mặt sang trái' : 'Vui lòng quay mặt sang phải');
-
-                        updateHUD({
-                            prompt: activePrompt,
-                            ovalState: data.is_matched ? 'state-aligned' : 'state-challenge'
-                        });
-
-                        if (data.passed) {
-                            clearInterval(challengeInterval);
-                            headPassed = true;
-                            hideArrows();
-                            playBeep(900, 200);
-                            updateHUD({
-                                prompt: 'Đã hoàn thành quay mặt',
-                                ovalState: 'state-aligned'
-                            });
-                            setTimeout(submitFinalVerification, 500);
-                        }
-                    }
-                } catch (e) {
-                } finally {
-                    isProcessing = false;
-                }
-            }, 200);
-        }
-
-        // =========================================================================
-        // FINAL SUBMISSION & ENSEMBLE VERIFY
-        // =========================================================================
-        async function submitFinalVerification() {
-            currentState = APP_STATE.VERIFYING;
-            document.getElementById('progressTrack').style.display = 'none';
-
-            updateHUD({
-                prompt: 'Đang xác thực thông tin...',
-                ovalState: 'state-challenge'
-            });
-
-            try {
-                const formData = new FormData();
-                formData.append('file', baseFrameBlob, 'verify.jpg');
-                if (sessionId) formData.append('session_id', sessionId);
-                formData.append('blink_passed', blinkPassed ? 'true' : 'false');
-                formData.append('head_passed', headPassed ? 'true' : 'false');
-                formData.append('head_action', headAction);
-
-                const res = await fetch(`${API_BASE_URL}/api/v1/verify`, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (res.ok) {
-                    const data = await res.json();
-                    const approved = (data.verdict === 'APPROVED' || data.approved === true);
-                    const reasons = data.reasons || [];
-                    showFinalResult(approved, reasons.length ? reasons.join(' · ') : null);
-                } else {
-                    showFinalResult(false, 'Máy chủ phản hồi lỗi thẩm định');
-                }
-            } catch (e) {
-                showFinalResult(false, 'Lỗi kết nối khi gửi dữ liệu xác thực');
-            }
-        }
-
-        // =========================================================================
-        // UI HELPERS & FEEDBACK
-        // =========================================================================
-        function updateHUD({ prompt, ovalState }) {
-            const pEl = document.getElementById('hudPrompt');
-            const oval = document.getElementById('faceOval');
-
-            if (pEl && prompt) pEl.textContent = prompt;
-
-            if (oval && ovalState !== undefined) {
-                const isStageTurn = oval.classList.contains('stage-turn');
-                oval.className = 'face-oval ' + (ovalState || '') + (isStageTurn ? ' stage-turn' : '');
-            }
-        }
-
-        function setStep(stepNum) {
-            for (let i = 1; i <= 3; i++) {
-                const item = document.getElementById(`stepIndicator${i}`);
-                if (!item) continue;
-            }
-            for (let j = 1; j <= 2; j++) {
-                const line = document.getElementById(`stepLine${j}`);
-                if (!line) continue;
-            }
-        }
-
-        function showArrow(direction) {
-            hideArrows();
-            const leftEl = document.getElementById('arrowLeft');
-            const rightEl = document.getElementById('arrowRight');
-            if (direction === 'left' && leftEl) leftEl.style.display = 'flex';
-            if (direction === 'right' && rightEl) rightEl.style.display = 'flex';
-        }
-
-        function hideArrows() {
-            const leftEl = document.getElementById('arrowLeft');
-            const rightEl = document.getElementById('arrowRight');
-            if (leftEl) leftEl.style.display = 'none';
-            if (rightEl) rightEl.style.display = 'none';
-        }
-
-        function showFinalResult(isSuccess, detailMsg) {
-            currentState = APP_STATE.COMPLETED;
-            clearInterval(poseInterval);
-            clearInterval(challengeInterval);
-
-            // Dừng quay và tải video phiên eKYC lên máy chủ lưu trữ làm bằng chứng
-            stopAndUploadSessionRecording(isSuccess);
-
-            const screen = document.getElementById('resultScreen');
-            const icon = document.getElementById('resultIcon');
-            const title = document.getElementById('resultTitle');
-            const desc = document.getElementById('resultDesc');
-            const oval = document.getElementById('faceOval');
-            const btnRestart = document.getElementById('btnRestart');
-
-            screen.style.display = 'flex';
-
-            if (isSuccess) {
-                // Đóng luồng sau 800ms để đảm bảo các frame cuối và video được chốt mượt mà
-                setTimeout(() => stopAllStreams(), 800);
-
-                icon.className = 'w-18 h-18 rounded-full flex items-center justify-center mb-3 shadow-lg border-2 bg-emerald-500/20 border-emerald-500 text-emerald-400';
-                icon.innerHTML = '<span class="material-symbols-outlined text-[40px]">check</span>';
-                title.textContent = 'Xác Thực Thành Công';
-                desc.textContent = (detailMsg ? detailMsg + ' — ' : '') + 'Khuôn mặt hợp lệ! Đang chuyển sang mở tủ gửi hàng...';
-                oval.className = 'face-oval state-aligned';
-                if (btnRestart) btnRestart.style.display = 'none';
-                playBeep(880, 250);
-                setTimeout(() => playBeep(1320, 350), 200);
-
-                // Tự động chuyển qua trang mở tủ gửi hàng sau 2.2 giây (cho phép xem kết quả & upload video hoàn tất)
-                setTimeout(() => {
-                    window.location.href = 'locker';
-                }, 2200);
-            } else {
-                // Tạm thời tắt camera sau 3 giây nếu dừng lại ở màn hình thất bại để cam không bị nóng
-                setTimeout(() => {
-                    if (currentState === APP_STATE.COMPLETED) {
-                        setCameraPower(false);
-                    }
-                }, 3000);
-
-                icon.className = 'w-18 h-18 rounded-full flex items-center justify-center mb-3 shadow-lg border-2 bg-rose-500/20 border-rose-500 text-rose-400';
-                icon.innerHTML = '<span class="material-symbols-outlined text-[40px]">close</span>';
-                title.textContent = 'Xác Thực Thất Bại';
-                desc.textContent = detailMsg || 'Không vượt qua bài kiểm tra người thật hoặc phát hiện dữ liệu không nhất quán. Vui lòng bấm thử lại bên dưới.';
-                oval.className = 'face-oval state-danger';
-                if (btnRestart) {
-                    btnRestart.style.display = 'inline-flex';
-                    btnRestart.innerHTML = '<span class="material-symbols-outlined text-[20px]">refresh</span><span>Thực Hiện Lại</span>';
-                    btnRestart.onclick = () => {
-                        initCamera(); // Bật lại camera cho lượt thử mới
-                    };
-                }
-                playBeep(350, 400, 'square');
-            }
-        }
-
-        function restartFlow(msg) {
-            if (msg) {
-                updateHUD({
-                    prompt: msg,
-                    ovalState: 'state-danger'
-                });
-            }
-            setTimeout(startVerificationFlow, 1400);
-        }
-
-        // Gắn sự kiện nút Hủy giao dịch có popup xác nhận AppPopup
         document.addEventListener('DOMContentLoaded', () => {
             const cancelBtn = document.getElementById('btn-cancel-transaction');
             if (cancelBtn) {
@@ -1440,8 +739,8 @@
                             cancelText: "Tiếp tục",
                             confirmText: "Hủy giao dịch",
                             onConfirm: () => {
-                                stopAndUploadSessionRecording(false);
-                                stopAllStreams(); // Tắt camera ngay lập tức
+                                stopRecBadge();
+                                sendControlAction('stop');
                                 const form = document.createElement("form");
                                 form.method = "POST";
                                 form.action = "/api/transaction/cancel";
@@ -1450,25 +749,21 @@
                             }
                         });
                     } else {
-                        stopAndUploadSessionRecording(false);
-                        stopAllStreams(); // Tắt camera ngay lập tức
+                        stopRecBadge();
+                        sendControlAction('stop');
                         window.location.href = "/";
                     }
                 });
             }
+
+            connectKycWs();
         });
 
-        // Đảm bảo camera được TẮT ngay khi người dùng đóng tab hoặc rời trang
         window.addEventListener('beforeunload', () => {
             navigator.sendBeacon(`${API_BASE_URL}/api/camera/power?enable=0`);
         });
         window.addEventListener('pagehide', () => {
             navigator.sendBeacon(`${API_BASE_URL}/api/camera/power?enable=0`);
-        });
-
-        // Khởi động Camera khi DOM sẵn sàng (BẬT camera On-Demand)
-        window.addEventListener('DOMContentLoaded', () => {
-            initCamera();
         });
     </script>
 </body>

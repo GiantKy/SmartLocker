@@ -74,7 +74,7 @@ public:
             // chính là nguyên nhân gây sập tối hình.
             // ============================================================
 
-            // 1. Lật ảnh: V-Flip và H-Mirror (Mặc định 0 theo hướng camera chuẩn)
+            // 1. Lật ảnh: V-Flip 0 và H-Mirror 0
             s->set_vflip(s, 0);
             s->set_hmirror(s, 0);
 

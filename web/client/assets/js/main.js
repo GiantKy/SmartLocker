@@ -458,23 +458,6 @@ function initSendOrderPage() {
     }
 
     if (sendForm) {
-        // Tự động nạp thông tin người gửi/nhận đã lưu trên server nếu có
-        fetch("/api/orders/pending")
-            .then((res) => res.json())
-            .then((data) => {
-                if (data && data.success && data.pendingOrder) {
-                    const sName = document.getElementById("sender-name");
-                    const sPhone = document.getElementById("sender-phone");
-                    const rName = document.getElementById("receiver-name");
-                    const rPhone = document.getElementById("receiver-phone");
-                    if (sName && !sName.value) sName.value = data.pendingOrder.senderName || "";
-                    if (sPhone && !sPhone.value) sPhone.value = data.pendingOrder.senderPhone || "";
-                    if (rName && !rName.value) rName.value = data.pendingOrder.receiverName || "";
-                    if (rPhone && !rPhone.value) rPhone.value = data.pendingOrder.receiverPhone || "";
-                }
-            })
-            .catch(() => {});
-
         sendForm.addEventListener("submit", (event) => {
             event.preventDefault();
 
@@ -483,6 +466,7 @@ function initSendOrderPage() {
             const receiverName = document.getElementById("receiver-name")?.value.trim() || "";
             const receiverPhone = document.getElementById("receiver-phone")?.value.trim() || "";
 
+            // 1. Bước check thô ở front-end trước
             if (!senderName || !senderPhone || !receiverName || !receiverPhone) {
                 AppPopup.show({
                     title: "Thiếu thông tin",
@@ -512,6 +496,7 @@ function initSendOrderPage() {
                 return;
             }
 
+            // 2. Hiển thị popup xác nhận thông tin
             const confirmHtml = `
                 <div class="space-y-3.5">
                     <p class="text-on-surface-variant text-body-sm">
@@ -553,6 +538,7 @@ function initSendOrderPage() {
                 cancelText: "Chỉnh sửa",
                 confirmText: "Đồng ý",
                 onConfirm: async () => {
+                    // 3. Chỉ khi click Đồng ý mới gửi lên server
                     const confirmBtn = document.getElementById("app-popup-confirm");
                     if (confirmBtn) {
                         confirmBtn.disabled = true;
@@ -560,8 +546,7 @@ function initSendOrderPage() {
                     }
 
                     try {
-                        // Gửi POST thông tin người gửi và người nhận lên server để lưu trữ
-                        const response = await fetch("/api/orders/pending", {
+                        const response = await fetch("/api/orders/save-info", {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json"
@@ -575,17 +560,16 @@ function initSendOrderPage() {
                         });
 
                         const data = await response.json();
-
                         if (response.ok && data.success) {
-                            // Chuyển sang bước xác thực eKYC
-                            window.location.href = "kyc";
-                        } else {
+                            window.location.href = "/kyc";
+                        }
+                        else {
                             if (confirmBtn) {
                                 confirmBtn.disabled = false;
                                 confirmBtn.textContent = "Đồng ý";
                             }
                             AppPopup.show({
-                                title: "Lỗi Lưu Thông Tin",
+                                title: "Thông tin chưa hợp lệ",
                                 icon: "error",
                                 content: `
                                     <p class="text-on-surface-variant">

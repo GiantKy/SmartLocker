@@ -1292,7 +1292,7 @@ class EKYCPipelineServer:
                 "time_left": 10.0,
                 "progress": 0.0,
                 "current_angle": 0.0,
-                "target_threshold": 3.5,
+                "target_threshold": HEAD_DELTA_YAW_THRESHOLD,
                 "is_matched": False,
                 "pose": {"yaw": 0.0, "pitch": 0.0, "roll": 0.0}
             }
@@ -1391,7 +1391,7 @@ class EKYCPipelineServer:
                             "time_left": 10.0,
                             "progress": 0.0,
                             "current_angle": round(pose_out.get("yaw", 0.0), 1),
-                            "target_threshold": 3.0,
+                            "target_threshold": HEAD_DELTA_YAW_THRESHOLD,
                             "is_matched": False,
                             "pose": pose_out
                         }
@@ -1444,7 +1444,7 @@ class EKYCPipelineServer:
                 "time_left": 10.0,
                 "progress": 0.0,        # KHÔNG ĐỔI TIẾN TRÌNH
                 "current_angle": 0.0,   # KHÔNG ĐỔI GÓC QUAY HEAD YAW
-                "target_threshold": 3.5,
+                "target_threshold": HEAD_DELTA_YAW_THRESHOLD,
                 "is_matched": False,
                 "pose": {"yaw": 0.0, "pitch": 0.0, "roll": 0.0}
             }
