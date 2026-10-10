@@ -16,5 +16,14 @@ module.exports = {
         waitForConnections: true,
         queueLimit: 0,
         charset: "utf8mb4"
+    },
+    MQTT: {
+        brokerUrl: process.env.MQTT_BROKER_URL || "mqtt://broker.emqx.io:1883",
+        user: process.env.MQTT_USER || "",
+        password: process.env.MQTT_PASSWORD || "",
+        topicCmd: process.env.MQTT_TOPIC_CMD || "SMART_LOCKER/LOCKER/CMD",
+        topicState: process.env.MQTT_TOPIC_STATE || "SMART_LOCKER/LOCKER/STATE",
+        topicAck: process.env.MQTT_TOPIC_ACK || "SMART_LOCKER/LOCKER/ACK",
+        topicStatus: process.env.MQTT_TOPIC_STATUS || "SMART_LOCKER/ESP32/STATUS"
     }
 };

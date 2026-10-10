@@ -67,6 +67,8 @@ public:
 
     bool publish(const char* message);
 
+    bool subscribe(const char* topic);
+
     bool isConnected();
 };
 

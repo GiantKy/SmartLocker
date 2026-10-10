@@ -6,6 +6,9 @@ const { validateOrderInfo } = require("../middleware/order.middleware");
 // Lưu thông tin người gửi/nhận tạm thời trên server (qua middleware kiểm tra đầy đủ & hợp lệ)
 router.post("/save-info", validateOrderInfo, orderController.savePendingOrder);
 
+// Lấy thông tin người gửi/nhận tạm thời trên server
+router.get("/pending", orderController.getPendingOrder);
+
 // Tạo đơn hàng mới và chỉ định ngăn tủ trống
 router.post("/create", orderController.createOrder);
 

@@ -77,22 +77,23 @@
                     Thông Tin Nhận Hàng
                 </h1>
                 <p class="font-body-sm text-on-surface-variant mt-1">
-                    Nhập số điện thoại người nhận để tra cứu và nhận kiện hàng
+                    Nhập số điện thoại người nhận và mã OTP để tra cứu và nhận kiện hàng
                 </p>
             </div>
 
             <!-- Form -->
             <form id="receive-order-form" class="space-y-4" novalidate>
 
-                <!-- Khối SĐT Người Nhận -->
+                <!-- Khối SĐT Người Nhận & Mã OTP -->
                 <div class="p-5 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/40 space-y-4">
                     <div class="flex items-center gap-2 text-primary font-bold">
                         <div class="w-9 h-9 rounded-xl bg-primary-fixed flex items-center justify-center">
                             <span class="material-symbols-outlined text-[20px]">move_to_inbox</span>
                         </div>
-                        <span class="text-label-lg uppercase tracking-wide">Thông tin người nhận</span>
+                        <span class="text-label-lg uppercase tracking-wide">Thông tin nhận hàng</span>
                     </div>
 
+                    <!-- SĐT Người Nhận -->
                     <div class="space-y-1.5">
                         <label for="receive-phone" class="block font-label-md text-label-md text-primary">
                             SĐT người nhận <span class="text-error">*</span>
@@ -109,6 +110,29 @@
                                 inputmode="tel"
                                 placeholder="Nhập số điện thoại người nhận"
                                 class="w-full pl-10 pr-4 py-3.5 rounded-xl bg-surface-container/60 border border-outline-variant/60 focus:border-primary focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline transition"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Mã OTP Nhận Hàng -->
+                    <div class="space-y-1.5">
+                        <label for="receive-otp" class="block font-label-md text-label-md text-primary">
+                            Mã OTP nhận hàng <span class="text-error">*</span>
+                        </label>
+                        <div class="relative flex items-center">
+                            <span class="material-symbols-outlined text-[20px] text-outline absolute left-3.5 pointer-events-none">
+                                pin
+                            </span>
+                            <input
+                                type="text"
+                                id="receive-otp"
+                                name="receiveOtp"
+                                required
+                                inputmode="numeric"
+                                maxlength="6"
+                                placeholder="Nhập mã OTP (gồm 6 chữ số)"
+                                autocomplete="one-time-code"
+                                class="w-full pl-10 pr-4 py-3.5 rounded-xl bg-surface-container/60 border border-outline-variant/60 focus:border-primary focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline transition font-mono tracking-widest text-base font-semibold"
                             >
                         </div>
                     </div>

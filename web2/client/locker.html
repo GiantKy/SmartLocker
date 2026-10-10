@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="utf-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    >
+    <meta name="shell-type" content="mobile_tab">
+
+    <title>Mở Tủ Bỏ Hàng | EXPRESS</title>
+
+    <!-- Google Fonts: Be Vietnam Pro -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <!-- Google Material Symbols -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700&display=swap"
+        rel="stylesheet"
+    >
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Tailwind Configuration & Main JS -->
+    <script src="assets/js/main.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="assets/css/style.css">
+
+    <style>
+        @keyframes pulseRing {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
+            70% {
+                transform: scale(1.03);
+                box-shadow: 0 0 0 16px rgba(16, 185, 129, 0);
+            }
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+
+        .locker-active-pulse {
+            animation: pulseRing 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+        }
+    </style>
+</head>
+
+<body class="bg-background font-body-md text-on-surface antialiased flex flex-col min-h-screen">
+
+    <main class="flex-1 flex flex-col relative w-full pt-safe pb-safe bg-background min-h-screen">
+
+        <!-- Thanh trên cùng với nút Hủy giao dịch bên tay trái và trạng thái bên phải -->
+        <div class="w-full max-w-md mx-auto px-margin pt-4 pb-2 flex items-center justify-between">
+            <button
+                type="button"
+                id="btn-cancel-transaction"
+                class="inline-flex items-center gap-1.5 px-3.5 py-2
+                rounded-xl bg-error-container/70 hover:bg-error-container
+                text-on-error-container font-label-md text-label-md font-semibold
+                transition-all active:scale-95 shadow-sm"
+            >
+                <span class="material-symbols-outlined text-[18px]">close</span>
+                <span>Hủy giao dịch</span>
+            </button>
+
+            <div class="flex items-center gap-2">
+                <span id="mqtt-status-badge" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-semibold border border-slate-300 dark:border-slate-700 shadow-sm">
+                    <span id="mqtt-status-dot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    <span id="mqtt-status-text">MQTT ESP32</span>
+                </span>
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant">
+                    Bước 3 / 3
+                </span>
+            </div>
+        </div>
+
+        <!-- Khung nội dung chính -->
+        <div class="flex-1 flex flex-col justify-center px-margin py-3 gap-4 max-w-md mx-auto w-full">
+
+            <!-- Card hiển thị trạng thái Mở Tủ -->
+            <div id="locker-status-card" class="bg-surface-container/60 border border-outline-variant/40 rounded-3xl p-6 text-center shadow-lg space-y-5">
+                
+                <!-- Icon trạng thái động -->
+                <div class="flex justify-center pt-2">
+                    <div id="locker-icon-wrap" class="w-24 h-24 rounded-full bg-emerald-500/15 border-2 border-emerald-500 flex items-center justify-center text-emerald-600 locker-active-pulse">
+                        <span id="locker-status-icon" class="material-symbols-outlined text-[52px]">
+                            lock_open
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Tiêu đề và trạng thái ô tủ -->
+                <div>
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-xs uppercase tracking-wider mb-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                        <span id="locker-badge">CỬA TỦ ĐÃ MỞ</span>
+                    </div>
+                    <h1 id="locker-main-title" class="font-headline-lg-mobile text-headline-lg-mobile text-primary font-bold tracking-tight">
+                        Vui Lòng Bỏ Hàng Vào Tủ
+                    </h1>
+                    <p id="locker-sub-desc" class="font-body-sm text-on-surface-variant mt-2 max-w-xs mx-auto">
+                        Cửa tủ đã mở tự động. Hãy đặt kiện hàng vào bên trong và ấn nút đóng tủ bên dưới.
+                    </p>
+                </div>
+
+            </div>
+
+            <!-- Nút bấm ĐÓNG TỦ khi đã bỏ hàng -->
+            <div class="pt-2">
+                <button
+                    type="button"
+                    id="btn-close-locker"
+                    class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold text-label-lg shadow-lg shadow-emerald-600/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2.5"
+                >
+                    <span class="material-symbols-outlined text-[24px]">door_front</span>
+                    <span id="btn-close-text">ĐÓNG TỦ</span>
+                </button>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Script điều khiển mở/đóng tủ -->
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const btnClose = document.getElementById("btn-close-locker");
+            const btnCloseText = document.getElementById("btn-close-text");
+            const lockerIconWrap = document.getElementById("locker-icon-wrap");
+            const lockerStatusIcon = document.getElementById("locker-status-icon");
+            const lockerBadge = document.getElementById("locker-badge");
+            const lockerSubDesc = document.getElementById("locker-sub-desc");
+
+            let currentLockerId = null;
+            let currentOrderCode = null;
+
+            // 1. Kiểm tra trạng thái kết nối MQTT & ESP32 theo thời gian thực
+            async function updateMqttStatus() {
+                try {
+                    const res = await fetch("/api/lockers/status", { cache: "no-store" });
+                    const data = await res.json();
+                    const dot = document.getElementById("mqtt-status-dot");
+                    const txt = document.getElementById("mqtt-status-text");
+
+                    if (data && data.success) {
+                        if (data.espStatus && data.espStatus.online) {
+                            dot.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+                            txt.textContent = "ESP32: Online";
+                        } else if (data.mqttConnected) {
+                            dot.className = "w-2 h-2 rounded-full bg-blue-500";
+                            txt.textContent = "MQTT: Đã kết nối Broker";
+                        } else {
+                            dot.className = "w-2 h-2 rounded-full bg-rose-500";
+                            txt.textContent = "MQTT: Mất kết nối";
+                        }
+                    }
+                } catch (e) {
+                    // Bỏ qua lỗi polling
+                }
+            }
+            updateMqttStatus();
+            setInterval(updateMqttStatus, 4000);
+
+            // 2. Tự động kiểm tra khay trống và truyền lệnh mở tủ về ESP32 qua MQTT
+            async function initLockerDeposit() {
+                try {
+                    lockerBadge.textContent = "ĐANG GỬI LỆNH MỞ CỬA TỦ...";
+                    lockerSubDesc.textContent = "Hệ thống đang kiểm tra khay trống và gửi tín hiệu mở tủ tới thiết bị...";
+
+                    const response = await fetch("/api/orders/create", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" }
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success && data.order) {
+                        currentLockerId = data.order.lockerId;
+                        currentOrderCode = data.order.orderCode;
+
+                        // Cập nhật trạng thái mở tủ (không hiện số tủ)
+                        lockerBadge.textContent = "CỬA TỦ ĐÃ MỞ";
+                        lockerSubDesc.textContent = "Cửa tủ đã mở tự động. Hãy đặt kiện hàng vào bên trong và ấn nút đóng tủ bên dưới.";
+                    } else {
+                        throw new Error(data.message || "Không thể cấp ngăn tủ trống");
+                    }
+                } catch (error) {
+                    console.error("Lỗi cấp tủ:", error);
+                    lockerBadge.textContent = "KHÔNG THỂ MỞ TỦ";
+                    AppPopup.show({
+                        title: "Không Thể Mở Tủ",
+                        icon: "error",
+                        content: `
+                            <p class="text-on-surface-variant">
+                                ${error.message || "Đã xảy ra lỗi khi mở ngăn tủ. Vui lòng thử lại sau."}
+                            </p>
+                        `,
+                        confirmText: "Về trang chủ",
+                        onConfirm: () => {
+                            window.location.href = "/";
+                        }
+                    });
+                }
+            }
+
+            // 3. Xử lý khi người dùng ấn nút "ĐÓNG TỦ"
+            btnClose.addEventListener("click", async () => {
+                btnClose.disabled = true;
+                btnClose.classList.add("opacity-60", "pointer-events-none");
+                btnCloseText.textContent = "Đang gửi lệnh đóng tủ...";
+
+                try {
+                    // Gửi request đóng tủ (không cần truyền lockerId)
+                    const response = await fetch("/api/orders/close-locker", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" }
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // Cập nhật trạng thái icon thành đã khóa
+                        lockerStatusIcon.textContent = "lock";
+                        lockerIconWrap.className = "w-24 h-24 rounded-full bg-slate-100 border-2 border-slate-400 flex items-center justify-center text-slate-700";
+                        lockerBadge.textContent = "CỬA TỦ ĐÃ ĐÓNG VÀ KHÓA";
+                        lockerSubDesc.textContent = "Cửa tủ đã được đóng và khóa chốt an toàn.";
+
+                        // Hiện popup thông báo hoàn tất: chỉ hiện đóng tủ thành công, không hiện mã đơn hay số tủ
+                        AppPopup.show({
+                            title: "Đóng Tủ Thành Công",
+                            icon: "check_circle",
+                            content: `
+                                <div class="py-2 text-center text-on-surface-variant text-body-sm">
+                                    <p class="font-medium text-base text-primary mb-1">Đóng tủ thành công!</p>
+                                    <p class="text-xs text-on-surface-variant/80">Cửa tủ đã được đóng và khóa chốt an toàn.</p>
+                                </div>
+                            `,
+                            confirmText: "Về trang chủ",
+                            onConfirm: () => {
+                                window.location.href = "/";
+                            }
+                        });
+                    } else {
+                        throw new Error(data.message || "Lỗi đóng tủ");
+                    }
+                } catch (error) {
+                    console.error("Lỗi đóng tủ:", error);
+                    AppPopup.show({
+                        title: "Lỗi Thao Tác",
+                        icon: "error",
+                        content: `
+                            <p class="text-on-surface-variant">
+                                ${error.message || "Không thể gửi lệnh đóng tủ tới ESP32. Vui lòng thử lại."}
+                            </p>
+                        `,
+                        confirmText: "Đã hiểu"
+                    });
+                    btnClose.disabled = false;
+                    btnClose.classList.remove("opacity-60", "pointer-events-none");
+                    btnCloseText.textContent = "ĐÓNG TỦ";
+                }
+            });
+
+            // Bắt đầu quy trình kiểm tra khay trống và mở tủ
+            initLockerDeposit();
+        });
+    </script>
+
+</body>
+
+</html>

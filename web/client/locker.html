@@ -58,7 +58,7 @@
 
     <main class="flex-1 flex flex-col relative w-full pt-safe pb-safe bg-background min-h-screen">
 
-        <!-- Thanh trên cùng với nút Hủy giao dịch bên tay trái -->
+        <!-- Thanh trên cùng với nút Hủy giao dịch bên tay trái và trạng thái bên phải -->
         <div class="w-full max-w-md mx-auto px-margin pt-4 pb-2 flex items-center justify-between">
             <button
                 type="button"
@@ -72,16 +72,22 @@
                 <span>Hủy giao dịch</span>
             </button>
 
-            <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant">
-                Bước 3 / 3
-            </span>
+            <div class="flex items-center gap-2">
+                <span id="mqtt-status-badge" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-semibold border border-slate-300 dark:border-slate-700 shadow-sm">
+                    <span id="mqtt-status-dot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    <span id="mqtt-status-text">MQTT ESP32</span>
+                </span>
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant">
+                    Bước 3 / 3
+                </span>
+            </div>
         </div>
 
         <!-- Khung nội dung chính -->
         <div class="flex-1 flex flex-col justify-center px-margin py-3 gap-4 max-w-md mx-auto w-full">
 
             <!-- Card hiển thị trạng thái Mở Tủ -->
-            <div id="locker-status-card" class="bg-surface-container/60 border border-outline-variant/40 rounded-3xl p-5 text-center shadow-lg space-y-4">
+            <div id="locker-status-card" class="bg-surface-container/60 border border-outline-variant/40 rounded-3xl p-6 text-center shadow-lg space-y-5">
                 
                 <!-- Icon trạng thái động -->
                 <div class="flex justify-center pt-2">
@@ -96,61 +102,27 @@
                 <div>
                     <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-xs uppercase tracking-wider mb-2">
                         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                        <span id="locker-badge">Ô TỦ ĐANG ĐƯỢC MỞ</span>
+                        <span id="locker-badge">CỬA TỦ ĐÃ MỞ</span>
                     </div>
                     <h1 id="locker-main-title" class="font-headline-lg-mobile text-headline-lg-mobile text-primary font-bold tracking-tight">
                         Vui Lòng Bỏ Hàng Vào Tủ
                     </h1>
-                    <p id="locker-sub-desc" class="font-body-sm text-on-surface-variant mt-1.5">
-                        Cửa ngăn tủ số <strong id="assigned-locker-id" class="text-secondary-container text-lg font-bold">...</strong> đã mở tự động. Hãy đặt kiện hàng vào bên trong và ấn nút bên dưới.
+                    <p id="locker-sub-desc" class="font-body-sm text-on-surface-variant mt-2 max-w-xs mx-auto">
+                        Cửa tủ đã mở tự động. Hãy đặt kiện hàng vào bên trong và ấn nút đóng tủ bên dưới.
                     </p>
                 </div>
 
-                <!-- Mô phỏng 6 ngăn tủ Smart Locker (1 -> 6) trực quan -->
-                <div class="pt-2">
-                    <div class="text-xs font-semibold text-on-surface-variant mb-2 text-left flex items-center justify-between">
-                        <span>Sơ đồ tủ thông minh:</span>
-                        <span class="text-emerald-600 font-bold text-[11px] flex items-center gap-1">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Ngăn mở
-                        </span>
-                    </div>
-                    <div class="grid grid-cols-3 gap-2.5">
-                        <div id="grid-tu-1" class="p-3 rounded-xl border border-outline-variant/50 bg-surface text-center font-bold text-sm text-on-surface-variant">Tủ 1</div>
-                        <div id="grid-tu-2" class="p-3 rounded-xl border border-outline-variant/50 bg-surface text-center font-bold text-sm text-on-surface-variant">Tủ 2</div>
-                        <div id="grid-tu-3" class="p-3 rounded-xl border border-outline-variant/50 bg-surface text-center font-bold text-sm text-on-surface-variant">Tủ 3</div>
-                        <div id="grid-tu-4" class="p-3 rounded-xl border border-outline-variant/50 bg-surface text-center font-bold text-sm text-on-surface-variant">Tủ 4</div>
-                        <div id="grid-tu-5" class="p-3 rounded-xl border border-outline-variant/50 bg-surface text-center font-bold text-sm text-on-surface-variant">Tủ 5</div>
-                        <div id="grid-tu-6" class="p-3 rounded-xl border border-outline-variant/50 bg-surface text-center font-bold text-sm text-on-surface-variant">Tủ 6</div>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- Card Tóm tắt thông tin đơn hàng -->
-            <div class="bg-surface-container-lowest border border-outline-variant/40 rounded-2xl p-4 space-y-2 text-body-sm shadow-sm">
-                <div class="flex items-center justify-between border-b border-outline-variant/30 pb-2">
-                    <span class="text-on-surface-variant">Mã vận đơn:</span>
-                    <span id="order-code-display" class="font-mono font-bold text-primary text-base">Đang tạo...</span>
-                </div>
-                <div class="grid grid-cols-3 gap-1">
-                    <span class="text-on-surface-variant">Người gửi:</span>
-                    <span id="sender-display" class="col-span-2 font-medium text-primary">...</span>
-                </div>
-                <div class="grid grid-cols-3 gap-1">
-                    <span class="text-on-surface-variant">Người nhận:</span>
-                    <span id="receiver-display" class="col-span-2 font-medium text-primary">...</span>
-                </div>
             </div>
 
             <!-- Nút bấm ĐÓNG TỦ khi đã bỏ hàng -->
-            <div class="pt-1">
+            <div class="pt-2">
                 <button
                     type="button"
                     id="btn-close-locker"
                     class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold text-label-lg shadow-lg shadow-emerald-600/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2.5"
                 >
                     <span class="material-symbols-outlined text-[24px]">door_front</span>
-                    <span id="btn-close-text">ĐÃ BỎ HÀNG &amp; ĐÓNG TỦ</span>
+                    <span id="btn-close-text">ĐÓNG TỦ</span>
                 </button>
             </div>
 
@@ -161,10 +133,6 @@
     <!-- Script điều khiển mở/đóng tủ -->
     <script>
         document.addEventListener("DOMContentLoaded", async () => {
-            const assignedLockerEl = document.getElementById("assigned-locker-id");
-            const orderCodeEl = document.getElementById("order-code-display");
-            const senderEl = document.getElementById("sender-display");
-            const receiverEl = document.getElementById("receiver-display");
             const btnClose = document.getElementById("btn-close-locker");
             const btnCloseText = document.getElementById("btn-close-text");
             const lockerIconWrap = document.getElementById("locker-icon-wrap");
@@ -175,26 +143,39 @@
             let currentLockerId = null;
             let currentOrderCode = null;
 
-            // 1. Lấy thông tin đơn hàng tạm đã lưu trên server để hiển thị
-            async function loadPendingOrderInfo() {
+            // 1. Kiểm tra trạng thái kết nối MQTT & ESP32 theo thời gian thực
+            async function updateMqttStatus() {
                 try {
-                    const response = await fetch("/api/orders/pending");
-                    const data = await response.json();
-                    if (data && data.success && data.pendingOrder) {
-                        senderEl.textContent = `${data.pendingOrder.senderName} (${data.pendingOrder.senderPhone})`;
-                        receiverEl.textContent = `${data.pendingOrder.receiverName} (${data.pendingOrder.receiverPhone})`;
+                    const res = await fetch("/api/lockers/status", { cache: "no-store" });
+                    const data = await res.json();
+                    const dot = document.getElementById("mqtt-status-dot");
+                    const txt = document.getElementById("mqtt-status-text");
+
+                    if (data && data.success) {
+                        if (data.espStatus && data.espStatus.online) {
+                            dot.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+                            txt.textContent = "ESP32: Online";
+                        } else if (data.mqttConnected) {
+                            dot.className = "w-2 h-2 rounded-full bg-blue-500";
+                            txt.textContent = "MQTT: Đã kết nối Broker";
+                        } else {
+                            dot.className = "w-2 h-2 rounded-full bg-rose-500";
+                            txt.textContent = "MQTT: Mất kết nối";
+                        }
                     }
                 } catch (e) {
-                    console.error("Lỗi lấy thông tin đơn hàng từ máy chủ:", e);
+                    // Bỏ qua lỗi polling
                 }
             }
+            updateMqttStatus();
+            setInterval(updateMqttStatus, 4000);
 
-            // Gọi tải thông tin hiển thị trước
-            loadPendingOrderInfo();
-
-            // 2. Gọi API tạo đơn hàng và cấp ngăn tủ trống (server tự động lấy thông tin pending đã lưu)
+            // 2. Tự động kiểm tra khay trống và truyền lệnh mở tủ về ESP32 qua MQTT
             async function initLockerDeposit() {
                 try {
+                    lockerBadge.textContent = "ĐANG GỬI LỆNH MỞ CỬA TỦ...";
+                    lockerSubDesc.textContent = "Hệ thống đang kiểm tra khay trống và gửi tín hiệu mở tủ tới thiết bị...";
+
                     const response = await fetch("/api/orders/create", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" }
@@ -206,30 +187,21 @@
                         currentLockerId = data.order.lockerId;
                         currentOrderCode = data.order.orderCode;
 
-                        assignedLockerEl.textContent = currentLockerId;
-                        orderCodeEl.textContent = currentOrderCode;
-
-                        // Cập nhật thông tin người gửi/nhận chính xác từ server
-                        if (data.order.senderName && data.order.senderPhone) {
-                            senderEl.textContent = `${data.order.senderName} (${data.order.senderPhone})`;
-                        }
-                        if (data.order.receiverName && data.order.receiverPhone) {
-                            receiverEl.textContent = `${data.order.receiverName} (${data.order.receiverPhone})`;
-                        }
-
-                        // Cập nhật giao diện sơ đồ tủ
-                        highlightLocker(currentLockerId);
+                        // Cập nhật trạng thái mở tủ (không hiện số tủ)
+                        lockerBadge.textContent = "CỬA TỦ ĐÃ MỞ";
+                        lockerSubDesc.textContent = "Cửa tủ đã mở tự động. Hãy đặt kiện hàng vào bên trong và ấn nút đóng tủ bên dưới.";
                     } else {
-                        throw new Error(data.message || "Không thể cấp ngăn tủ");
+                        throw new Error(data.message || "Không thể cấp ngăn tủ trống");
                     }
                 } catch (error) {
                     console.error("Lỗi cấp tủ:", error);
+                    lockerBadge.textContent = "KHÔNG THỂ MỞ TỦ";
                     AppPopup.show({
                         title: "Không Thể Mở Tủ",
                         icon: "error",
                         content: `
                             <p class="text-on-surface-variant">
-                                ${error.message || "Đã xảy ra lỗi khi cấp ngăn tủ trống. Vui lòng thử lại sau."}
+                                ${error.message || "Đã xảy ra lỗi khi mở ngăn tủ. Vui lòng thử lại sau."}
                             </p>
                         `,
                         confirmText: "Về trang chủ",
@@ -240,37 +212,17 @@
                 }
             }
 
-            // Đánh dấu ô tủ được chọn trên sơ đồ trực quan
-            function highlightLocker(id) {
-                for (let i = 1; i <= 6; i++) {
-                    const el = document.getElementById(`grid-tu-${i}`);
-                    if (!el) continue;
-                    if (i === id) {
-                        el.className = "p-3 rounded-xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-center font-bold text-sm text-emerald-700 dark:text-emerald-300 shadow-md locker-active-pulse";
-                        el.innerHTML = `<span>Tủ ${i}</span><div class="text-[10px] text-emerald-600 font-semibold uppercase">Đang mở</div>`;
-                    } else {
-                        el.className = "p-3 rounded-xl border border-outline-variant/40 bg-surface-container text-center font-medium text-sm text-on-surface-variant/70 opacity-60";
-                        el.innerHTML = `<span>Tủ ${i}</span><div class="text-[10px]">Đóng</div>`;
-                    }
-                }
-            }
-
-            // 3. Xử lý khi người dùng ấn nút "ĐÃ BỎ HÀNG & ĐÓNG TỦ"
+            // 3. Xử lý khi người dùng ấn nút "ĐÓNG TỦ"
             btnClose.addEventListener("click", async () => {
-                if (!currentLockerId) return;
-
                 btnClose.disabled = true;
                 btnClose.classList.add("opacity-60", "pointer-events-none");
-                btnCloseText.textContent = "Đang Khóa Chốt Tủ...";
+                btnCloseText.textContent = "Đang gửi lệnh đóng tủ...";
 
                 try {
+                    // Gửi request đóng tủ (không cần truyền lockerId)
                     const response = await fetch("/api/orders/close-locker", {
                         method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            lockerId: currentLockerId,
-                            orderCode: currentOrderCode
-                        })
+                        headers: { "Content-Type": "application/json" }
                     });
 
                     const data = await response.json();
@@ -279,21 +231,17 @@
                         // Cập nhật trạng thái icon thành đã khóa
                         lockerStatusIcon.textContent = "lock";
                         lockerIconWrap.className = "w-24 h-24 rounded-full bg-slate-100 border-2 border-slate-400 flex items-center justify-center text-slate-700";
-                        lockerBadge.textContent = "Ô TỦ ĐÃ ĐÓNG VÀ KHÓA";
-                        lockerSubDesc.innerHTML = `Ngăn tủ số <strong>${currentLockerId}</strong> đã được đóng và chốt an toàn.`;
+                        lockerBadge.textContent = "CỬA TỦ ĐÃ ĐÓNG VÀ KHÓA";
+                        lockerSubDesc.textContent = "Cửa tủ đã được đóng và khóa chốt an toàn.";
 
-                        // Hiện popup thông báo hoàn tất giao dịch
+                        // Hiện popup thông báo hoàn tất: chỉ hiện đóng tủ thành công, không hiện mã đơn hay số tủ
                         AppPopup.show({
-                            title: "Hoàn Tất Giao Dịch",
+                            title: "Đóng Tủ Thành Công",
                             icon: "check_circle",
                             content: `
-                                <div class="space-y-3 text-on-surface-variant text-body-sm">
-                                    <p>Kiện hàng của bạn đã được bỏ vào ô tủ số <strong>${currentLockerId}</strong> và đóng chốt an toàn.</p>
-                                    <div class="p-3 bg-surface-container rounded-xl text-center space-y-1">
-                                        <span class="text-xs text-on-surface-variant">Mã đơn hàng của bạn:</span>
-                                        <div class="text-lg font-bold text-primary font-mono">${currentOrderCode}</div>
-                                    </div>
-                                    <p class="text-xs text-on-surface-variant/80">Người nhận sẽ nhận được tin nhắn tra cứu để đến lấy kiện hàng.</p>
+                                <div class="py-2 text-center text-on-surface-variant text-body-sm">
+                                    <p class="font-medium text-base text-primary mb-1">Đóng tủ thành công!</p>
+                                    <p class="text-xs text-on-surface-variant/80">Cửa tủ đã được đóng và khóa chốt an toàn.</p>
                                 </div>
                             `,
                             confirmText: "Về trang chủ",
@@ -311,18 +259,18 @@
                         icon: "error",
                         content: `
                             <p class="text-on-surface-variant">
-                                ${error.message || "Không thể gửi lệnh đóng tủ. Vui lòng thử lại."}
+                                ${error.message || "Không thể gửi lệnh đóng tủ tới ESP32. Vui lòng thử lại."}
                             </p>
                         `,
                         confirmText: "Đã hiểu"
                     });
                     btnClose.disabled = false;
                     btnClose.classList.remove("opacity-60", "pointer-events-none");
-                    btnCloseText.textContent = "ĐÃ BỎ HÀNG & ĐÓNG TỦ";
+                    btnCloseText.textContent = "ĐÓNG TỦ";
                 }
             });
 
-            // Khởi tạo quy trình mở tủ
+            // Bắt đầu quy trình kiểm tra khay trống và mở tủ
             initLockerDeposit();
         });
     </script>

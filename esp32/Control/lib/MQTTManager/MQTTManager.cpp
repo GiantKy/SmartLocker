@@ -145,6 +145,17 @@ bool MQTTManager::publish(
         message);
 }
 
+bool MQTTManager::subscribe(
+    const char *topic)
+{
+    if (!_mqttClient.connected())
+    {
+        return false;
+    }
+
+    return _mqttClient.subscribe(topic);
+}
+
 bool MQTTManager::isConnected()
 {
     return _mqttClient.connected();

@@ -45,12 +45,6 @@ SmartLocker/
 │   │   │   └── request.middleware.js        # Xử lý chung cho request
 │   │   │                                      # VD: log request, tạo request ID...
 │   │   │
-│   │   ├── models/                          # Tầng làm việc với dữ liệu/database
-│   │   │   ├── user.model.js                # Truy vấn bảng users
-│   │   │   ├── locker.model.js              # Truy vấn bảng lockers
-│   │   │   ├── order.model.js               # Truy vấn bảng orders
-│   │   │   └── device.model.js              # Truy vấn bảng devices
-│   │   │
 │   │   ├── utils/                           # Các hàm tiện ích dùng chung
 │   │   │   ├── logger.js                    # Ghi log hệ thống
 │   │   │   ├── crypto.js                    # Hash/mã hóa/giải mã/chữ ký nếu cần

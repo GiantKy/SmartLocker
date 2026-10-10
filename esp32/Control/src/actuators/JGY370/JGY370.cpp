@@ -13,10 +13,12 @@ void JGY370::begin()
 
 void JGY370::run()
 {
-    analogWrite(_pin, 1);
+    digitalWrite(_pin, HIGH);
+    analogWrite(_pin, 255);
 }
 
 void JGY370::stop()
 {
+    digitalWrite(_pin, LOW);
     analogWrite(_pin, 0);
 }

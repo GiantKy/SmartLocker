@@ -3,6 +3,9 @@ const { query } = require("../config/database");
 // Lưu trữ thông tin đơn hàng tạm thời (người gửi, người nhận) trên server
 let pendingOrder = null;
 
+// Lưu trữ thông tin ngăn tủ đang mở trên server
+let currentlyOpenLocker = null; // { lockerId, orderCode, openedAt }
+
 /**
  * Lưu thông tin người gửi & người nhận tạm thời trên server
  * @param {Object} data 
@@ -36,6 +39,63 @@ function getPendingOrder() {
  */
 function clearPendingOrder() {
     pendingOrder = null;
+}
+
+/**
+ * Ghi nhận ngăn tủ đang được mở trên server
+ * @param {Object} param0 
+ * @param {number} param0.lockerId
+ * @param {string} [param0.orderCode]
+ */
+function setCurrentlyOpenLocker({ lockerId, orderCode }) {
+    currentlyOpenLocker = {
+        lockerId: parseInt(lockerId, 10),
+        orderCode: orderCode || null,
+        openedAt: new Date()
+    };
+    return currentlyOpenLocker;
+}
+
+/**
+ * Lấy thông tin ngăn tủ đang mở trong bộ nhớ server
+ * @returns {Object|null}
+ */
+function getCurrentlyOpenLocker() {
+    return currentlyOpenLocker;
+}
+
+/**
+ * Xóa trạng thái ngăn tủ đang mở
+ */
+function clearCurrentlyOpenLocker() {
+    currentlyOpenLocker = null;
+}
+
+/**
+ * Tự động tìm ngăn tủ đang mở:
+ * 1. Kiểm tra bộ nhớ cache server
+ * 2. Nếu không có, truy vấn đơn hàng gần nhất có TRANG_THAI = 0 trong CSDL
+ * @returns {Promise<{ lockerId: number, orderCode: string|null }|null>}
+ */
+async function findActiveOpenLocker() {
+    if (currentlyOpenLocker && currentlyOpenLocker.lockerId) {
+        return currentlyOpenLocker;
+    }
+
+    // Truy vấn đơn hàng đang trong tiến trình mở tủ (TRANG_THAI = 0)
+    const rows = await query(
+        "SELECT TU, MA_DON_HANG FROM DON_HANG WHERE TRANG_THAI = 0 ORDER BY ID DESC LIMIT 1"
+    );
+    if (rows.length > 0) {
+        const found = {
+            lockerId: rows[0].TU,
+            orderCode: rows[0].MA_DON_HANG
+        };
+        setCurrentlyOpenLocker(found);
+        return found;
+    }
+
+    return null;
 }
 
 /**
@@ -83,6 +143,9 @@ async function createOrder({ senderName, senderPhone, receiverName, receiverPhon
     // Xóa thông tin tạm sau khi đã ghi thành công vào database
     clearPendingOrder();
 
+    // Ghi nhận ngăn tủ này hiện đang được mở
+    setCurrentlyOpenLocker({ lockerId, orderCode });
+
     return {
         orderCode,
         lockerId,
@@ -117,6 +180,7 @@ async function completeDeposit(lockerId, orderCode) {
     }
 
     clearPendingOrder();
+    clearCurrentlyOpenLocker();
     return true;
 }
 
@@ -124,6 +188,10 @@ module.exports = {
     setPendingOrder,
     getPendingOrder,
     clearPendingOrder,
+    setCurrentlyOpenLocker,
+    getCurrentlyOpenLocker,
+    clearCurrentlyOpenLocker,
+    findActiveOpenLocker,
     assignAvailableLocker,
     createOrder,
     completeDeposit

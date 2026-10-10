@@ -2,6 +2,7 @@ const app = require("./src/app");
 const { PORT } = require("./src/config/env");
 const { testConnection, pool } = require("./src/config/database");
 const esp32StreamService = require("./src/services/esp32Stream.service");
+const mqttService = require("./src/services/mqtt.service");
 
 const server = app.listen(PORT, async () => {
     console.log("=================================");
@@ -14,6 +15,7 @@ const server = app.listen(PORT, async () => {
     console.log("=================================");
 
     await testConnection();
+    mqttService.connect();
 });
 
 // WebSocket Binary Stream Handshake (RFC 6455) từ ESP32-CAM
@@ -24,6 +26,9 @@ server.on("upgrade", (req, socket, head) => {
 // Xử lý khi server bị dừng
 async function gracefulShutdown() {
     console.log("\nStopping server...");
+    try {
+        mqttService.disconnect();
+    } catch (e) {}
     try {
         await pool.end();
     } catch (e) {}

@@ -607,6 +607,7 @@ function initSendOrderPage() {
             event.preventDefault();
 
             const receivePhone = document.getElementById("receive-phone")?.value.trim() || "";
+            const receiveOtp = document.getElementById("receive-otp")?.value.trim() || "";
 
             if (!receivePhone) {
                 AppPopup.show({
@@ -637,10 +638,38 @@ function initSendOrderPage() {
                 return;
             }
 
+            if (!receiveOtp) {
+                AppPopup.show({
+                    title: "Thiếu mã OTP",
+                    icon: "pin",
+                    content: `
+                        <p class="text-on-surface-variant">
+                            Vui lòng nhập <strong>Mã OTP nhận hàng</strong> trước khi xác nhận.
+                        </p>
+                    `,
+                    confirmText: "Đã hiểu"
+                });
+                return;
+            }
+
+            if (receiveOtp.length < 4 || receiveOtp.length > 8) {
+                AppPopup.show({
+                    title: "Mã OTP chưa hợp lệ",
+                    icon: "lock_clock",
+                    content: `
+                        <p class="text-on-surface-variant">
+                            Mã OTP nhận hàng thường gồm 4 - 6 chữ số. Vui lòng kiểm tra lại.
+                        </p>
+                    `,
+                    confirmText: "Kiểm tra lại"
+                });
+                return;
+            }
+
             const confirmReceiveHtml = `
                 <div class="space-y-3.5">
                     <p class="text-on-surface-variant text-body-sm">
-                        Vui lòng kiểm tra lại số điện thoại người nhận trước khi xác nhận:
+                        Vui lòng kiểm tra lại thông tin nhận hàng trước khi xác nhận:
                     </p>
 
                     <div class="p-3.5 rounded-xl bg-surface-container/70 border border-outline-variant/40 space-y-2">
@@ -651,6 +680,10 @@ function initSendOrderPage() {
                         <div class="grid grid-cols-3 gap-1 text-body-sm">
                             <span class="text-on-surface-variant">SĐT người nhận:</span>
                             <span class="col-span-2 font-semibold text-primary">${escapeHtml(receivePhone)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1 text-body-sm">
+                            <span class="text-on-surface-variant">Mã OTP:</span>
+                            <span class="col-span-2 font-mono font-bold text-primary tracking-widest">${escapeHtml(receiveOtp)}</span>
                         </div>
                     </div>
                 </div>
@@ -668,7 +701,7 @@ function initSendOrderPage() {
                         icon: "check_circle",
                         content: `
                             <p class="text-on-surface-variant">
-                                Hệ thống đã ghi nhận yêu cầu nhận hàng cho số điện thoại <strong>${escapeHtml(receivePhone)}</strong>!
+                                Hệ thống đã xác thực mã OTP và ghi nhận yêu cầu nhận hàng cho số điện thoại <strong>${escapeHtml(receivePhone)}</strong>!
                             </p>
                         `,
                         confirmText: "Về trang chủ",
