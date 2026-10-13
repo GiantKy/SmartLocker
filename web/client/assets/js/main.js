@@ -695,20 +695,62 @@ function initSendOrderPage() {
                 content: confirmReceiveHtml,
                 cancelText: "Chỉnh sửa",
                 confirmText: "Đồng ý",
-                onConfirm: () => {
-                    AppPopup.show({
-                        title: "Xác Nhận Thành Công",
-                        icon: "check_circle",
-                        content: `
-                            <p class="text-on-surface-variant">
-                                Hệ thống đã xác thực mã OTP và ghi nhận yêu cầu nhận hàng cho số điện thoại <strong>${escapeHtml(receivePhone)}</strong>!
-                            </p>
-                        `,
-                        confirmText: "Về trang chủ",
-                        onConfirm: () => {
-                            window.location.href = "/";
+                onConfirm: async () => {
+                    const confirmBtn = document.getElementById("app-popup-confirm");
+                    if (confirmBtn) {
+                        confirmBtn.disabled = true;
+                        confirmBtn.textContent = "Đang kiểm tra & mở tủ...";
+                    }
+
+                    try {
+                        const response = await fetch("/api/orders/receive", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify({
+                                receivePhone,
+                                receiveOtp
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (response.ok && data.success) {
+                            if (data.order) {
+                                sessionStorage.setItem("current_pickup_order", JSON.stringify(data.order));
+                            }
+                            // Chuyển hướng tới màn hình mở tủ ở chế độ nhận hàng
+                            window.location.href = "/locker?mode=receive";
+                        } else {
+                            if (confirmBtn) {
+                                confirmBtn.disabled = false;
+                                confirmBtn.textContent = "Đồng ý";
+                            }
+                            AppPopup.show({
+                                title: "Xác Thực Không Thành Công",
+                                icon: "error",
+                                content: `
+                                    <p class="text-on-surface-variant">
+                                        ${escapeHtml(data.message || "Không tìm thấy thông tin đơn hàng hoặc mã OTP không chính xác. Vui lòng kiểm tra lại.")}
+                                    </p>
+                                `,
+                                confirmText: "Kiểm tra lại"
+                            });
                         }
-                    });
+                    } catch (err) {
+                        console.error("Lỗi gửi yêu cầu nhận hàng:", err);
+                        AppPopup.show({
+                            title: "Lỗi Kết Nối",
+                            icon: "wifi_off",
+                            content: `
+                                <p class="text-on-surface-variant">
+                                    Không thể kết nối tới máy chủ. Vui lòng kiểm tra lại kết nối mạng.
+                                </p>
+                            `,
+                            confirmText: "Đã hiểu"
+                        });
+                    }
                 }
             });
         });

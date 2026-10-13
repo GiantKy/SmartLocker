@@ -42,6 +42,47 @@ function validateOrderInfo(req, res, next) {
     next();
 }
 
+/**
+ * Middleware kiểm tra tính đầy đủ và hợp lệ của thông tin nhận hàng (SĐT & OTP)
+ */
+function validateReceiveInfo(req, res, next) {
+    const { receivePhone, receiveOtp } = req.body || {};
+
+    const cleanPhone = typeof receivePhone === "string" ? receivePhone.trim().replace(/\s+/g, "") : "";
+    const cleanOtp = typeof receiveOtp === "string" ? receiveOtp.trim().toUpperCase() : "";
+
+    if (!cleanPhone || !cleanOtp) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            success: false,
+            code: ERROR_CODES.MISSING_REQUIRED_FIELDS,
+            message: "Vui lòng nhập đầy đủ SĐT người nhận và mã OTP nhận hàng"
+        });
+    }
+
+    const phoneRegex = /^(0|\+84)[0-9]{8,10}$/;
+    if (!phoneRegex.test(cleanPhone)) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            success: false,
+            code: ERROR_CODES.INVALID_PHONE_NUMBER,
+            message: "Số điện thoại người nhận chưa hợp lệ (gồm 9-11 chữ số, bắt đầu bằng 0 hoặc +84)"
+        });
+    }
+
+    if (cleanOtp.length < 4 || cleanOtp.length > 10) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            success: false,
+            code: ERROR_CODES.VALIDATION_ERROR,
+            message: "Mã OTP nhận hàng thường gồm 4-8 chữ số (hoặc mã đơn hàng DHxxxxxx)"
+        });
+    }
+
+    req.body.receivePhone = cleanPhone;
+    req.body.receiveOtp = cleanOtp;
+
+    next();
+}
+
 module.exports = {
-    validateOrderInfo
+    validateOrderInfo,
+    validateReceiveInfo
 };

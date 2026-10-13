@@ -11,4 +11,7 @@ router.post("/session-video", ekycController.saveSessionVideo);
 // Danh sách video phiên eKYC đã lưu trữ
 router.get("/session-videos", ekycController.listSessionVideos);
 
+// Webhook nhận kết quả từ Python AI Server
+router.post("/result", ekycController.handleAiWebhook);
+
 module.exports = router;

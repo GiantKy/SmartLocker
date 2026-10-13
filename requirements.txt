@@ -1,0 +1,40 @@
+# ==============================================================================
+# eKYC Biometric Face ID, Active Liveness & Dual-Model Anti-Spoofing Pipeline
+# Supported Python versions: 3.9, 3.10, 3.11
+# ==============================================================================
+
+# --- 1. Core Computer Vision & Scientific Computing ---
+opencv-python>=4.8.0.76
+numpy>=1.24.3,<2.0.0
+scipy>=1.10.0
+Pillow>=9.5.0
+
+# --- 2. Google MediaPipe Tasks API (Face Mesh & Landmarker) ---
+mediapipe>=0.10.14
+
+# --- 3. Deep Learning & Face Detection (Ultralytics YOLO) ---
+ultralytics>=8.0.0
+torch>=2.0.0
+torchvision>=0.15.0
+
+# --- 4. Roboflow Inference & RF-DETR Anti-Spoofing (Ensemble Engine) ---
+inference>=0.9.0
+inference-sdk>=0.0.9
+roboflow>=1.1.0
+supervision>=0.20.0
+
+# --- 5. ONNX Runtime Engine ---
+onnx>=1.14.0
+onnxruntime>=1.16.0
+
+# --- 6. FastAPI Web & Microservice REST API Hub ---
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+python-multipart>=0.0.6
+aiofiles>=23.0.0
+pydantic>=2.0.0
+
+# --- 7. Networking & Utilities ---
+httpx>=0.24.0
+requests>=2.28.0
+tqdm>=4.65.0

@@ -136,8 +136,27 @@ async function listSessionVideos(req, res, next) {
     }
 }
 
+/**
+ * Tiếp nhận webhook kết quả từ Python AI Server
+ * POST /api/ekyc/result
+ */
+async function handleAiWebhook(req, res) {
+    try {
+        const payload = req.body || {};
+        console.log("[eKYC Webhook] Nhận kết quả từ Python AI Server:", payload.verdict || payload);
+        return res.status(200).json({
+            success: true,
+            message: "Đã ghi nhận kết quả webhook từ AI server"
+        });
+    } catch (error) {
+        console.error("[eKYC Webhook] Lỗi xử lý webhook AI:", error.message);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+}
+
 module.exports = {
     verifyFace,
     saveSessionVideo,
-    listSessionVideos
+    listSessionVideos,
+    handleAiWebhook
 };

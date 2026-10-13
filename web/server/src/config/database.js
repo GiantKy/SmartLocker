@@ -132,6 +132,18 @@ async function testConnection() {
     try {
         const connection = await pool.getConnection();
         console.log(`[Database] Đã kết nối thành công tới MySQL Laragon (${DB.host}:${DB.port}/${DB.database})`);
+
+        // Tự động kiểm tra và bổ sung cột OTP nếu bảng DON_HANG đã tồn tại từ trước mà chưa có cột này
+        try {
+            const [cols] = await connection.query("SHOW COLUMNS FROM DON_HANG LIKE 'OTP'");
+            if (cols.length === 0) {
+                await connection.query("ALTER TABLE DON_HANG ADD COLUMN OTP VARCHAR(10) NULL AFTER MA_DON_HANG");
+                console.log("[Database] Đã tự động cập nhật bổ sung cột OTP vào bảng DON_HANG.");
+            }
+        } catch (colErr) {
+            // Bỏ qua nếu bảng DON_HANG chưa được tạo
+        }
+
         connection.release();
         return true;
     } catch (error) {

@@ -77,7 +77,7 @@
                     <span id="mqtt-status-dot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
                     <span id="mqtt-status-text">MQTT ESP32</span>
                 </span>
-                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant">
+                <span id="step-badge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant">
                     Bước 3 / 3
                 </span>
             </div>
@@ -114,7 +114,7 @@
 
             </div>
 
-            <!-- Nút bấm ĐÓNG TỦ khi đã bỏ hàng -->
+            <!-- Nút bấm ĐÓNG TỦ khi đã bỏ hoặc lấy hàng -->
             <div class="pt-2">
                 <button
                     type="button"
@@ -138,10 +138,39 @@
             const lockerIconWrap = document.getElementById("locker-icon-wrap");
             const lockerStatusIcon = document.getElementById("locker-status-icon");
             const lockerBadge = document.getElementById("locker-badge");
+            const lockerMainTitle = document.getElementById("locker-main-title");
             const lockerSubDesc = document.getElementById("locker-sub-desc");
+            const stepBadge = document.getElementById("step-badge");
+
+            // Xác định chế độ: "receive" (Nhận hàng) hay "send" (Gửi hàng)
+            const urlParams = new URLSearchParams(window.location.search);
+            const isReceiveMode = urlParams.get("mode") === "receive";
 
             let currentLockerId = null;
             let currentOrderCode = null;
+            let currentOtp = null;
+
+            // Tinh chỉnh giao diện theo chế độ Nhận hàng nếu mode=receive
+            if (isReceiveMode) {
+                document.title = "Mở Tủ Lấy Hàng | EXPRESS";
+                if (stepBadge) stepBadge.textContent = "Bước 2 / 2 - Nhận hàng";
+                lockerBadge.textContent = "CỬA TỦ ĐÃ MỞ (LẤY HÀNG)";
+                lockerMainTitle.textContent = "Vui Lòng Lấy Hàng Khỏi Tủ";
+                lockerSubDesc.textContent = "Cửa tủ đã mở tự động. Hãy lấy kiện hàng ra ngoài và ấn nút đóng tủ bên dưới.";
+                btnCloseText.textContent = "ĐÓNG TỦ & HOÀN TẤT";
+
+                // Đọc thông tin đơn hàng đã lưu từ sessionStorage (nếu có)
+                try {
+                    const savedOrderStr = sessionStorage.getItem("current_pickup_order");
+                    if (savedOrderStr) {
+                        const savedOrder = JSON.parse(savedOrderStr);
+                        if (savedOrder && savedOrder.orderCode) {
+                            currentOrderCode = savedOrder.orderCode;
+                            currentLockerId = savedOrder.lockerId;
+                        }
+                    }
+                } catch (e) {}
+            }
 
             // 1. Kiểm tra trạng thái kết nối MQTT & ESP32 theo thời gian thực
             async function updateMqttStatus() {
@@ -170,7 +199,7 @@
             updateMqttStatus();
             setInterval(updateMqttStatus, 4000);
 
-            // 2. Tự động kiểm tra khay trống và truyền lệnh mở tủ về ESP32 qua MQTT
+            // 2. Chỉ thực thi tự động tạo đơn và mở tủ khi ở chế độ GỬI HÀNG (Deposit)
             async function initLockerDeposit() {
                 try {
                     lockerBadge.textContent = "ĐANG GỬI LỆNH MỞ CỬA TỦ...";
@@ -186,8 +215,9 @@
                     if (data.success && data.order) {
                         currentLockerId = data.order.lockerId;
                         currentOrderCode = data.order.orderCode;
+                        currentOtp = data.order.otp;
 
-                        // Cập nhật trạng thái mở tủ (không hiện số tủ)
+                        // Cập nhật trạng thái mở tủ
                         lockerBadge.textContent = "CỬA TỦ ĐÃ MỞ";
                         lockerSubDesc.textContent = "Cửa tủ đã mở tự động. Hãy đặt kiện hàng vào bên trong và ấn nút đóng tủ bên dưới.";
                     } else {
@@ -219,7 +249,7 @@
                 btnCloseText.textContent = "Đang gửi lệnh đóng tủ...";
 
                 try {
-                    // Gửi request đóng tủ (không cần truyền lockerId)
+                    // Gửi request đóng tủ
                     const response = await fetch("/api/orders/close-locker", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" }
@@ -234,21 +264,53 @@
                         lockerBadge.textContent = "CỬA TỦ ĐÃ ĐÓNG VÀ KHÓA";
                         lockerSubDesc.textContent = "Cửa tủ đã được đóng và khóa chốt an toàn.";
 
-                        // Hiện popup thông báo hoàn tất: chỉ hiện đóng tủ thành công, không hiện mã đơn hay số tủ
-                        AppPopup.show({
-                            title: "Đóng Tủ Thành Công",
-                            icon: "check_circle",
-                            content: `
-                                <div class="py-2 text-center text-on-surface-variant text-body-sm">
-                                    <p class="font-medium text-base text-primary mb-1">Đóng tủ thành công!</p>
-                                    <p class="text-xs text-on-surface-variant/80">Cửa tủ đã được đóng và khóa chốt an toàn.</p>
-                                </div>
-                            `,
-                            confirmText: "Về trang chủ",
-                            onConfirm: () => {
-                                window.location.href = "/";
-                            }
-                        });
+                        if (isReceiveMode) {
+                            // THÔNG BÁO HOÀN TẤT NHẬN HÀNG
+                            AppPopup.show({
+                                title: "Nhận Hàng Thành Công",
+                                icon: "check_circle",
+                                content: `
+                                    <div class="py-2 text-center text-on-surface-variant text-body-sm space-y-1.5">
+                                        <p class="font-bold text-base text-primary">Nhận hàng hoàn tất!</p>
+                                        <p class="text-xs text-on-surface-variant/80">Cửa tủ đã được đóng và khóa chốt an toàn. Ngăn tủ đã được giải phóng.</p>
+                                        <p class="text-xs text-emerald-600 font-semibold pt-1">Cảm ơn bạn đã sử dụng Smart Locker!</p>
+                                    </div>
+                                `,
+                                confirmText: "Về trang chủ",
+                                onConfirm: () => {
+                                    sessionStorage.removeItem("current_pickup_order");
+                                    window.location.href = "/";
+                                }
+                            });
+                        } else {
+                            // THÔNG BÁO HOÀN TẤT GỬI HÀNG (KÈM MÃ OTP VÀ MÃ ĐƠN)
+                            AppPopup.show({
+                                title: "Gửi Hàng Thành Công",
+                                icon: "check_circle",
+                                content: `
+                                    <div class="py-2 text-left text-on-surface-variant text-body-sm space-y-2.5">
+                                        <p class="font-semibold text-center text-primary text-base">Cửa tủ đã được đóng và khóa an toàn!</p>
+                                        <div class="p-3.5 bg-primary/5 rounded-2xl border border-primary/20 space-y-1.5 text-xs">
+                                            <div class="flex justify-between items-center">
+                                                <span class="text-on-surface-variant">Mã đơn hàng:</span>
+                                                <span class="font-mono font-bold text-primary">${escapeHtml(currentOrderCode || "DH---")}</span>
+                                            </div>
+                                            ${currentOtp ? `
+                                            <div class="flex justify-between items-center pt-1.5 border-t border-primary/10">
+                                                <span class="text-on-surface-variant font-medium">Mã OTP nhận hàng:</span>
+                                                <span class="font-mono font-extrabold text-base text-secondary tracking-widest">${escapeHtml(currentOtp)}</span>
+                                            </div>
+                                            ` : ""}
+                                        </div>
+                                        <p class="text-[11px] text-center text-on-surface-variant/80 italic">Hãy ghi nhớ hoặc chụp lại mã OTP này để người nhận mở tủ lấy hàng.</p>
+                                    </div>
+                                `,
+                                confirmText: "Về trang chủ",
+                                onConfirm: () => {
+                                    window.location.href = "/";
+                                }
+                            });
+                        }
                     } else {
                         throw new Error(data.message || "Lỗi đóng tủ");
                     }
@@ -266,12 +328,15 @@
                     });
                     btnClose.disabled = false;
                     btnClose.classList.remove("opacity-60", "pointer-events-none");
-                    btnCloseText.textContent = "ĐÓNG TỦ";
+                    btnCloseText.textContent = isReceiveMode ? "ĐÓNG TỦ & HOÀN TẤT" : "ĐÓNG TỦ";
                 }
             });
 
-            // Bắt đầu quy trình kiểm tra khay trống và mở tủ
-            initLockerDeposit();
+            // Nếu ở chế độ gửi hàng -> Bắt đầu quy trình cấp tủ và mở tủ
+            // Nếu ở chế độ nhận hàng -> Cửa tủ đã được phát lệnh mở từ trang receive, người dùng chỉ cần lấy hàng và bấm đóng
+            if (!isReceiveMode) {
+                initLockerDeposit();
+            }
         });
     </script>
 

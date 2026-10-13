@@ -107,7 +107,67 @@ async function createOrder(req, res, next) {
 /**
  * Đóng tủ sau khi người dùng ấn nút "Đóng tủ":
  * Server tự động xem khay nào đang được mở để đóng.
- * Client KHÔNG quyết định ID tủ.
+/**
+ * Xác thực thông tin người nhận (SĐT + OTP) và mở khay tủ tương ứng:
+ * POST /api/orders/receive
+ */
+async function receiveOrder(req, res, next) {
+    try {
+        const { receivePhone, receiveOtp } = req.body || {};
+
+        if (!receivePhone || !receiveOtp) {
+            return res.status(400).json({
+                success: false,
+                message: "Vui lòng nhập đầy đủ SĐT người nhận và mã OTP nhận hàng"
+            });
+        }
+
+        // Tra cứu đơn hàng hợp lệ trong CSDL (TRANG_THAI = 1)
+        const order = await orderService.verifyAndFindOrderForPickup({ receivePhone, receiveOtp });
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: "Không tìm thấy kiện hàng nào khớp với số điện thoại và mã OTP này, hoặc kiện hàng đã được nhận trước đó."
+            });
+        }
+
+        const lockerId = parseInt(order.TU, 10);
+        const orderCode = order.MA_DON_HANG;
+
+        // Bắt đầu phiên nhận hàng trên server
+        orderService.startPickup(order);
+
+        // TRUYỀN LỆNH MỞ TỦ VỀ ESP32 QUA MQTT
+        try {
+            await mqttService.openLocker(lockerId, {
+                action: "RECEIVE",
+                orderCode: orderCode,
+                receiverPhone: order.SDT_NGUOI_NHAN
+            });
+            console.log(`[OrderController] Đã gửi lệnh mở khay tủ số ${lockerId} cho người nhận lấy hàng (${orderCode}) qua MQTT.`);
+        } catch (mqttError) {
+            console.error(`[OrderController] Lỗi gửi lệnh MQTT mở tủ ${lockerId}:`, mqttError.message);
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Xác thực thành công. Khay tủ đang được mở để lấy hàng.",
+            order: {
+                orderCode: order.MA_DON_HANG,
+                lockerId: lockerId,
+                receiverName: order.TEN_NGUOI_NHAN,
+                receiverPhone: order.SDT_NGUOI_NHAN,
+                createdAt: order.CREATED_AT
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * Đóng tủ sau khi người dùng ấn nút "Đóng tủ":
+ * Tự động phân biệt luồng GỬI HÀNG (đóng tủ & lưu hàng) và NHẬN HÀNG (đóng tủ & giải phóng khay)
  * POST /api/orders/close-locker
  */
 async function closeLocker(req, res, next) {
@@ -116,8 +176,9 @@ async function closeLocker(req, res, next) {
         let activeLocker = await orderService.findActiveOpenLocker();
         let targetLockerId = activeLocker ? activeLocker.lockerId : null;
         let targetOrderCode = activeLocker ? activeLocker.orderCode : null;
+        let activeAction = activeLocker ? activeLocker.action : null;
 
-        // Nếu DB chưa có đơn TRANG_THAI = 0, kiểm tra trạng thái mở trong MQTT service
+        // Nếu DB chưa có đơn, kiểm tra trạng thái mở trong MQTT service
         if (!targetLockerId) {
             targetLockerId = mqttService.getCurrentlyOpenLockerId();
         }
@@ -138,14 +199,23 @@ async function closeLocker(req, res, next) {
         }
 
         const numericLockerId = parseInt(targetLockerId, 10);
+        const isReceiveAction = (activeAction === "RECEIVE");
 
-        // 2. Cập nhật cơ sở dữ liệu: đánh dấu tủ đã có hàng (TRONG = 0) và đơn hàng hoàn tất gửi (TRANG_THAI = 1)
-        await orderService.completeDeposit(numericLockerId, targetOrderCode);
+        if (isReceiveAction) {
+            // 2a. LUỒNG NHẬN HÀNG: Giải phóng khay tủ (TRONG = 1), cập nhật đơn sang COMPLETED (TRANG_THAI = 2)
+            await orderService.completePickup(numericLockerId, targetOrderCode);
+        } else {
+            // 2b. LUỒNG GỬI HÀNG: Đánh dấu tủ đã có hàng (TRONG = 0), cập nhật đơn sang STORED (TRANG_THAI = 1)
+            await orderService.completeDeposit(numericLockerId, targetOrderCode);
+        }
 
         // 3. TRUYỀN LỆNH ĐÓNG TỦ VỀ ESP32 QUA MQTT
         try {
-            await mqttService.closeLocker(numericLockerId);
-            console.log(`[OrderController] Server xác định khay ${numericLockerId} đang mở và đã gửi lệnh đóng tới ESP32 qua MQTT.`);
+            await mqttService.closeLocker(numericLockerId, {
+                action: isReceiveAction ? "RECEIVE" : "DEPOSIT",
+                orderCode: targetOrderCode
+            });
+            console.log(`[OrderController] Server xác định khay ${numericLockerId} đang mở (${isReceiveAction ? "RECEIVE" : "DEPOSIT"}) và đã gửi lệnh đóng tới ESP32 qua MQTT.`);
         } catch (mqttError) {
             console.error(`[OrderController] Lỗi gửi lệnh MQTT đóng tủ ${numericLockerId}:`, mqttError.message);
         }
@@ -157,9 +227,28 @@ async function closeLocker(req, res, next) {
 
         return res.status(200).json({
             success: true,
+            action: isReceiveAction ? "RECEIVE" : "DEPOSIT",
             lockerId: numericLockerId,
             orderCode: targetOrderCode,
-            message: `Ngăn tủ số ${numericLockerId} đã đóng thành công`
+            message: isReceiveAction
+                ? `Ngăn tủ số ${numericLockerId} đã đóng và giải phóng thành công. Đã hoàn tất nhận hàng!`
+                : `Ngăn tủ số ${numericLockerId} đã đóng thành công`
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * Lấy thông tin ngăn tủ đang hoạt động (nếu có)
+ * GET /api/orders/active
+ */
+async function getActiveOrder(req, res, next) {
+    try {
+        const active = await orderService.findActiveOpenLocker();
+        return res.status(200).json({
+            success: true,
+            activeLocker: active
         });
     } catch (error) {
         next(error);
@@ -170,5 +259,7 @@ module.exports = {
     savePendingOrder,
     getPendingOrder,
     createOrder,
-    closeLocker
+    receiveOrder,
+    closeLocker,
+    getActiveOrder
 };
